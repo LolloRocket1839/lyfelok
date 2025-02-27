@@ -7,6 +7,7 @@ import {
   Car, 
   Smartphone 
 } from 'lucide-react';
+import { autoCategorize } from '@/utils/autoCategorization';
 
 export type ExpenseItem = {
   id: number;
@@ -124,10 +125,19 @@ export function useLifestyleLock() {
   const handleExpenseSubmit = () => {
     if (!expenseCategory || isNaN(Number(expenseSpent)) || isNaN(Number(expenseBaseline))) return;
     
+    // Get the appropriate icon based on the category
+    const result = autoCategorize(expenseCategory);
+    
     if (editingExpense) {
       setExpenses(expenses.map(exp => 
         exp.id === editingExpense 
-          ? { ...exp, category: expenseCategory, spent: Number(expenseSpent), baseline: Number(expenseBaseline) } 
+          ? { 
+              ...exp, 
+              category: expenseCategory, 
+              spent: Number(expenseSpent), 
+              baseline: Number(expenseBaseline),
+              icon: result.icon 
+            } 
           : exp
       ));
       setEditingExpense(null);
@@ -137,7 +147,7 @@ export function useLifestyleLock() {
         category: expenseCategory,
         spent: Number(expenseSpent),
         baseline: Number(expenseBaseline),
-        icon: <Coffee size={18} />
+        icon: result.icon
       };
       setExpenses([...expenses, newExpense]);
     }

@@ -2,6 +2,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { modalAnimation, overlayAnimation } from '@/lib/animations';
 import { ModalType } from '@/hooks/useLifestyleLock';
+import { useState } from 'react';
+import { autoCategorize } from '@/utils/autoCategorization';
 
 interface ModalsContainerProps {
   activeModal: ModalType;
@@ -56,11 +58,25 @@ const ModalsContainer = ({
   setDepositAccount,
   handleAddDeposit
 }: ModalsContainerProps) => {
+  const [merchantName, setMerchantName] = useState('');
+
   const closeActiveModal = () => {
     if (activeModal === 'expense') {
       resetExpenseForm();
+      setMerchantName('');
     }
     setActiveModal(null);
+  };
+
+  const handleMerchantChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const name = e.target.value;
+    setMerchantName(name);
+    
+    // Only auto-categorize if there's no editing happening and the field is empty
+    if (!editingExpense && !expenseCategory) {
+      const result = autoCategorize(name);
+      setExpenseCategory(result.category);
+    }
   };
 
   const renderModalContent = () => {
@@ -101,6 +117,24 @@ const ModalsContainer = ({
               {editingExpense ? 'Edit Expense' : 'Add New Expense'}
             </h2>
             <div className="space-y-4">
+              {!editingExpense && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Merchant Name</label>
+                  <input
+                    type="text"
+                    value={merchantName}
+                    onChange={handleMerchantChange}
+                    className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="e.g., Uber, Starbucks, Amazon"
+                  />
+                  {merchantName && (
+                    <p className="mt-1 text-xs text-emerald-600">
+                      {expenseCategory ? `Auto-categorized as: ${expenseCategory}` : "No category detected"}
+                    </p>
+                  )}
+                </div>
+              )}
+              
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
                 <input
