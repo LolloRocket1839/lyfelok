@@ -8,6 +8,7 @@ import {
   Smartphone 
 } from 'lucide-react';
 import { autoCategorize, addCustomRule, createMerchantPattern } from '@/utils/autoCategorization';
+import { categorizeInvestment } from '@/utils/investmentCategorization';
 
 export type ExpenseItem = {
   id: number;
@@ -23,6 +24,8 @@ export type DepositItem = {
   date: string;
   amount: number;
   account: string;
+  description?: string;
+  category?: string;
 };
 
 export type IncomeHistoryItem = {
@@ -73,9 +76,9 @@ export function useLifestyleLock() {
   ]);
   
   const [deposits, setDeposits] = useState<DepositItem[]>([
-    { id: 1, date: '2025-01-15', amount: 700, account: '401k' },
-    { id: 2, date: '2025-02-15', amount: 700, account: '401k' },
-    { id: 3, date: '2025-03-15', amount: 500, account: 'Brokerage' }
+    { id: 1, date: '2025-01-15', amount: 700, account: '401k', description: 'ETF MSCI World', category: 'ETF' },
+    { id: 2, date: '2025-02-15', amount: 700, account: '401k', description: 'Bond Governativo', category: 'Obbligazioni' },
+    { id: 3, date: '2025-03-15', amount: 500, account: 'Brokerage', description: 'Azioni Enel', category: 'Azioni' }
   ]);
 
   // Expense tracking with Italian categories
@@ -98,6 +101,8 @@ export function useLifestyleLock() {
   const [depositDate, setDepositDate] = useState(getCurrentDate());
   const [depositAmount, setDepositAmount] = useState('');
   const [depositAccount, setDepositAccount] = useState('401k');
+  const [depositDescription, setDepositDescription] = useState('');
+  const [depositCategory, setDepositCategory] = useState('');
 
   // Update current month on component mount and when date changes
   useEffect(() => {
@@ -151,13 +156,17 @@ export function useLifestyleLock() {
       id: Date.now(),
       date: depositDate,
       amount: Number(depositAmount),
-      account: depositAccount
+      account: depositAccount,
+      description: depositDescription || undefined,
+      category: depositCategory || undefined
     };
     
     setDeposits([...deposits, newDeposit]);
     setDepositDate(getCurrentDate());
     setDepositAmount('');
     setDepositAccount('401k');
+    setDepositDescription('');
+    setDepositCategory('');
     setActiveModal(null);
   };
 
@@ -289,6 +298,10 @@ export function useLifestyleLock() {
     setDepositAmount,
     depositAccount,
     setDepositAccount,
+    depositDescription,
+    setDepositDescription,
+    depositCategory,
+    setDepositCategory,
     
     // Modal control
     activeModal,

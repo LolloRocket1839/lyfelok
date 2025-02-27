@@ -4,6 +4,7 @@ import { modalAnimation, overlayAnimation } from '@/lib/animations';
 import { ModalType, ExpenseItem } from '@/hooks/useLifestyleLock';
 import { useState, useEffect } from 'react';
 import { autoCategorize } from '@/utils/autoCategorization';
+import { categorizeInvestment, getAllCategories } from '@/utils/investmentCategorization';
 
 interface ModalsContainerProps {
   activeModal: ModalType;
@@ -76,12 +77,17 @@ const ModalsContainer = ({
 }: ModalsContainerProps) => {
   const [merchantName, setMerchantName] = useState('');
   const [baselineModified, setBaselineModified] = useState(false);
+  const [investmentDescription, setInvestmentDescription] = useState('');
+  const [investmentCategory, setInvestmentCategory] = useState('');
 
   const closeActiveModal = () => {
     if (activeModal === 'expense') {
       resetExpenseForm();
       setMerchantName('');
       setBaselineModified(false);
+    } else if (activeModal === 'deposit') {
+      setInvestmentDescription('');
+      setInvestmentCategory('');
     }
     setActiveModal(null);
   };
@@ -158,10 +164,30 @@ const ModalsContainer = ({
     setBaselineModified(true);
   };
 
+  // Handle investment description change - auto-categorize
+  const handleInvestmentDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const description = e.target.value;
+    setInvestmentDescription(description);
+    
+    if (description.trim() !== '') {
+      const result = categorizeInvestment({ 
+        name: description, 
+        description: description 
+      });
+      
+      if (result.category !== 'Non Categorizzato') {
+        setInvestmentCategory(result.category);
+      }
+    }
+  };
+
   // Reset baselineModified flag when editing expense changes
   useEffect(() => {
     setBaselineModified(false);
   }, [editingExpense]);
+  
+  // Get all investment categories
+  const investmentCategories = getAllCategories();
 
   const renderModalContent = () => {
     switch (activeModal) {
@@ -321,6 +347,36 @@ const ModalsContainer = ({
               </div>
               
               <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Descrizione/Nome</label>
+                <input
+                  type="text"
+                  value={investmentDescription}
+                  onChange={handleInvestmentDescriptionChange}
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  placeholder="es. ETF MSCI World, BTP 10 anni, Azioni Enel"
+                />
+                {investmentDescription && investmentCategory && (
+                  <p className="mt-1 text-xs text-emerald-600">
+                    Auto-categorizzato come: {investmentCategory}
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
+                <select
+                  value={investmentCategory}
+                  onChange={(e) => setInvestmentCategory(e.target.value)}
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+                >
+                  <option value="">Seleziona una categoria</option>
+                  {investmentCategories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Conto</label>
                 <select
                   value={depositAccount}
@@ -331,6 +387,8 @@ const ModalsContainer = ({
                   <option value="IRA">IRA</option>
                   <option value="Roth IRA">Roth IRA</option>
                   <option value="Brokerage">Brokerage</option>
+                  <option value="Pensione">Pensione</option>
+                  <option value="Liquidità">Liquidità</option>
                 </select>
               </div>
               
