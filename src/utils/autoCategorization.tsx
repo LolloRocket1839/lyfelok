@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { Home, ShoppingBag, Coffee, Car, Smartphone } from 'lucide-react';
 
 /**
@@ -19,7 +20,7 @@ const expenseMappings = [
  * @param {string} iconType - The type of icon to use
  * @returns JSX Element representing the icon
  */
-function getIconByType(iconType: string) {
+function getIconByType(iconType: string): React.ReactElement {
   switch (iconType) {
     case 'car':
       return <Car size={18} />;
@@ -41,7 +42,7 @@ function getIconByType(iconType: string) {
  * @param {string} merchantName - The name of the merchant.
  * @returns Object containing category and appropriate icon
  */
-export function autoCategorize(merchantName: string) {
+export function autoCategorize(merchantName: string): { category: string; icon: React.ReactElement } {
   for (const mapping of expenseMappings) {
     if (mapping.regex.test(merchantName)) {
       return {
