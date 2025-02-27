@@ -143,7 +143,7 @@ const InvestmentsView = ({ deposits, totalDeposits, setActiveModal }: Investment
                       {deposit.date}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
-                      {deposit.category === 'Liquidità' ? 'Liquidità' : (deposit.description || '-')}
+                      {deposit.description || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
                       {deposit.category ? (

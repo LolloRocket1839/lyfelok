@@ -155,8 +155,7 @@ export function useLifestyleLock() {
       id: Date.now(),
       date: depositDate,
       amount: Number(depositAmount),
-      // Se la categoria è Liquidità, non aggiungiamo la descrizione
-      description: depositCategory === 'Liquidità' ? undefined : (depositDescription || undefined),
+      description: depositDescription || undefined,
       category: depositCategory
     };
     

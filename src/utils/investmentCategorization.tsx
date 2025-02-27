@@ -120,17 +120,6 @@ class RuleBasedInvestmentCategorizer {
         icon: <Wallet size={18} />
       },
       {
-        category: 'Liquidità',
-        patterns: [
-          /\bcash\b/i, /\bcontante\b/i, /\bliquidit(à|a)\b/i, /\bmoney market\b/i,
-          /\bmercato monetario\b/i, /\bdeposit[oi]\b/i, /\bconto corrente\b/i,
-          /\bcheckings?\b/i, /\bsavings?\b/i, /\bconto deposito\b/i, /\bt-bill\b/i,
-          /\bbot\b/i, /\bcertificato di deposito\b/i, /\bcd\b/i,
-          /\blibretto\b/i, /\bmoneta\b/i
-        ],
-        icon: <Banknote size={18} />
-      },
-      {
         category: 'Investimenti Alternativi',
         patterns: [
           /\balternative\b/i, /\balternativi\b/i, /\bhedge fund\b/i, /\bprivate equity\b/i,
