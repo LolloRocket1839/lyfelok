@@ -3,16 +3,38 @@ import { Home, ShoppingBag, Coffee, Car, Smartphone } from 'lucide-react';
 
 /**
  * A list of mappings between common merchant keywords and expense categories.
- * Each mapping contains a regex pattern for matching and the corresponding category with icon.
+ * Each mapping contains a regex pattern for matching and the corresponding category and icon name.
  */
 const expenseMappings = [
-  { regex: /uber|lyft|taxi|cab|metro|subway|train|bus|transit/i, category: "Transport", icon: <Car size={18} /> },
-  { regex: /grocery|food|restaurant|cafe|starbucks|coffee|mcdonald|burger|pizza|taco|chipotle|panera/i, category: "Food", icon: <ShoppingBag size={18} /> },
-  { regex: /amazon|walmart|target|shopping|store|shop|mall|clothing|electronics|apple/i, category: "Shopping", icon: <ShoppingBag size={18} /> },
-  { regex: /movie|netflix|spotify|hulu|disney|theater|concert|entertainment|game|steam/i, category: "Entertainment", icon: <Coffee size={18} /> },
-  { regex: /rent|mortgage|apartment|housing|home|condo|lease|property/i, category: "Housing", icon: <Home size={18} /> },
-  { regex: /phone|internet|cable|utility|electric|water|gas|bill|subscription/i, category: "Utilities", icon: <Smartphone size={18} /> },
+  { regex: /uber|lyft|taxi|cab|metro|subway|train|bus|transit/i, category: "Transport", iconType: "car" },
+  { regex: /grocery|food|restaurant|cafe|starbucks|coffee|mcdonald|burger|pizza|taco|chipotle|panera/i, category: "Food", iconType: "shopping-bag" },
+  { regex: /amazon|walmart|target|shopping|store|shop|mall|clothing|electronics|apple/i, category: "Shopping", iconType: "shopping-bag" },
+  { regex: /movie|netflix|spotify|hulu|disney|theater|concert|entertainment|game|steam/i, category: "Entertainment", iconType: "coffee" },
+  { regex: /rent|mortgage|apartment|housing|home|condo|lease|property/i, category: "Housing", iconType: "home" },
+  { regex: /phone|internet|cable|utility|electric|water|gas|bill|subscription/i, category: "Utilities", iconType: "smartphone" },
 ];
+
+/**
+ * Helper function to get the appropriate icon based on iconType
+ * @param {string} iconType - The type of icon to use
+ * @returns JSX Element representing the icon
+ */
+function getIconByType(iconType: string) {
+  switch (iconType) {
+    case 'car':
+      return <Car size={18} />;
+    case 'shopping-bag':
+      return <ShoppingBag size={18} />;
+    case 'coffee':
+      return <Coffee size={18} />;
+    case 'home':
+      return <Home size={18} />;
+    case 'smartphone':
+      return <Smartphone size={18} />;
+    default:
+      return <Smartphone size={18} />;
+  }
+}
 
 /**
  * Auto-categorizes an expense based on the merchant name.
@@ -24,7 +46,7 @@ export function autoCategorize(merchantName: string) {
     if (mapping.regex.test(merchantName)) {
       return {
         category: mapping.category,
-        icon: mapping.icon
+        icon: getIconByType(mapping.iconType)
       };
     }
   }
@@ -32,6 +54,6 @@ export function autoCategorize(merchantName: string) {
   // Default category if no mapping is found
   return { 
     category: "Other", 
-    icon: <Smartphone size={18} /> 
+    icon: getIconByType("smartphone") 
   };
 }
