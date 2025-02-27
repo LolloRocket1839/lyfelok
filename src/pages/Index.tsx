@@ -230,6 +230,7 @@ const Index = () => {
         setDepositAccount={setDepositAccount}
         handleAddDeposit={handleAddDeposit}
         getCurrentDate={getCurrentDate}
+        expenses={expenses}
       />
     </>
   );

@@ -1,6 +1,7 @@
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { modalAnimation, overlayAnimation } from '@/lib/animations';
-import { ModalType } from '@/hooks/useLifestyleLock';
+import { ModalType, ExpenseItem } from '@/hooks/useLifestyleLock';
 import { useState, useEffect } from 'react';
 import { autoCategorize } from '@/utils/autoCategorization';
 
@@ -39,6 +40,9 @@ interface ModalsContainerProps {
   
   // Utility
   getCurrentDate: () => string;
+  
+  // Added prop for expenses
+  expenses: ExpenseItem[];
 }
 
 const ModalsContainer = ({
@@ -67,7 +71,8 @@ const ModalsContainer = ({
   depositAccount,
   setDepositAccount,
   handleAddDeposit,
-  getCurrentDate
+  getCurrentDate,
+  expenses
 }: ModalsContainerProps) => {
   const [merchantName, setMerchantName] = useState('');
   const [baselineModified, setBaselineModified] = useState(false);
@@ -84,7 +89,7 @@ const ModalsContainer = ({
   // Find the most recent baseline for a category from existing expenses
   const findCategoryBaseline = (category: string) => {
     // Get all expenses with this category
-    const categoryExpenses = window.__lifestyleLock.expenses.filter(
+    const categoryExpenses = expenses.filter(
       exp => exp.category.toLowerCase() === category.toLowerCase()
     );
 
