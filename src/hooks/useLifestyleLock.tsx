@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Home, 
   ShoppingBag, 
@@ -15,6 +15,7 @@ export type ExpenseItem = {
   spent: number;
   baseline: number;
   icon: JSX.Element;
+  date: string; // Added date field
 };
 
 export type DepositItem = {
@@ -27,18 +28,31 @@ export type DepositItem = {
 export type IncomeHistoryItem = {
   month: string;
   income: number;
+  date?: string; // Optional date field
 };
 
 export type AppView = 'dashboard' | 'investments' | 'expenses' | 'projections';
 
 export type ModalType = 'income' | 'expense' | 'deposit' | null;
 
+// Helper function to get current date in YYYY-MM-DD format
+const getCurrentDate = (): string => {
+  const today = new Date();
+  return today.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+};
+
+// Helper function to get current month name
+const getCurrentMonth = (): string => {
+  const today = new Date();
+  return today.toLocaleString('default', { month: 'long' });
+};
+
 export function useLifestyleLock() {
   // Basic financial states
   const [income, setIncome] = useState(5000);
   const [previousIncome, setPreviousIncome] = useState(4000);
   const [baselineLifestyle, setBaselineLifestyle] = useState(3000);
-  const [currentMonth, setCurrentMonth] = useState('January');
+  const [currentMonth, setCurrentMonth] = useState(getCurrentMonth());
   const [restraintScore, setRestraintScore] = useState(85);
   const [investments, setInvestments] = useState(10000);
   const [savings, setSavings] = useState(5000);
@@ -47,15 +61,15 @@ export function useLifestyleLock() {
 
   // Tracking states
   const [incomeHistory] = useState<IncomeHistoryItem[]>([
-    { month: 'Jan', income: 4000 },
-    { month: 'Feb', income: 4000 },
-    { month: 'Mar', income: 4000 },
-    { month: 'Apr', income: 4500 },
-    { month: 'May', income: 4500 },
-    { month: 'Jun', income: 4500 },
-    { month: 'Jul', income: 5000 },
-    { month: 'Aug', income: 5000 },
-    { month: 'Sep', income: 5000 }
+    { month: 'Jan', income: 4000, date: '2025-01-01' },
+    { month: 'Feb', income: 4000, date: '2025-02-01' },
+    { month: 'Mar', income: 4000, date: '2025-03-01' },
+    { month: 'Apr', income: 4500, date: '2025-04-01' },
+    { month: 'May', income: 4500, date: '2025-05-01' },
+    { month: 'Jun', income: 4500, date: '2025-06-01' },
+    { month: 'Jul', income: 5000, date: '2025-07-01' },
+    { month: 'Aug', income: 5000, date: '2025-08-01' },
+    { month: 'Sep', income: 5000, date: '2025-09-01' }
   ]);
   
   const [deposits, setDeposits] = useState<DepositItem[]>([
@@ -66,22 +80,39 @@ export function useLifestyleLock() {
 
   // Expense tracking
   const [expenses, setExpenses] = useState<ExpenseItem[]>([
-    { id: 1, category: 'Housing', spent: 1200, baseline: 1200, icon: <Home size={18} /> },
-    { id: 2, category: 'Food', spent: 600, baseline: 800, icon: <ShoppingBag size={18} /> },
-    { id: 3, category: 'Entertainment', spent: 300, baseline: 400, icon: <Coffee size={18} /> },
-    { id: 4, category: 'Transport', spent: 400, baseline: 400, icon: <Car size={18} /> },
-    { id: 5, category: 'Other', spent: 200, baseline: 200, icon: <Smartphone size={18} /> }
+    { id: 1, category: 'Housing', spent: 1200, baseline: 1200, icon: <Home size={18} />, date: '2025-09-01' },
+    { id: 2, category: 'Food', spent: 600, baseline: 800, icon: <ShoppingBag size={18} />, date: '2025-09-05' },
+    { id: 3, category: 'Entertainment', spent: 300, baseline: 400, icon: <Coffee size={18} />, date: '2025-09-10' },
+    { id: 4, category: 'Transport', spent: 400, baseline: 400, icon: <Car size={18} />, date: '2025-09-15' },
+    { id: 5, category: 'Other', spent: 200, baseline: 200, icon: <Smartphone size={18} />, date: '2025-09-20' }
   ]);
   
   // Form states
   const [newIncomeValue, setNewIncomeValue] = useState('');
+  const [incomeDate, setIncomeDate] = useState(getCurrentDate());
   const [expenseCategory, setExpenseCategory] = useState('');
   const [expenseSpent, setExpenseSpent] = useState('');
   const [expenseBaseline, setExpenseBaseline] = useState('');
+  const [expenseDate, setExpenseDate] = useState(getCurrentDate());
   const [editingExpense, setEditingExpense] = useState<number | null>(null);
-  const [depositDate, setDepositDate] = useState('');
+  const [depositDate, setDepositDate] = useState(getCurrentDate());
   const [depositAmount, setDepositAmount] = useState('');
   const [depositAccount, setDepositAccount] = useState('401k');
+
+  // Update current month on component mount and when date changes
+  useEffect(() => {
+    const updateCurrentMonth = () => {
+      setCurrentMonth(getCurrentMonth());
+    };
+    
+    // Set initial month
+    updateCurrentMonth();
+    
+    // Update month every day at midnight
+    const timer = setInterval(updateCurrentMonth, 86400000); // 24 hours in milliseconds
+    
+    return () => clearInterval(timer);
+  }, []);
 
   // Calculate totals
   const totalSpent = expenses.reduce((sum, item) => sum + item.spent, 0);
@@ -98,7 +129,16 @@ export function useLifestyleLock() {
     if (newIncomeValue && !isNaN(Number(newIncomeValue))) {
       setPreviousIncome(income);
       setIncome(Number(newIncomeValue));
+      
+      // Add to income history with the selected date
+      const date = new Date(incomeDate);
+      const month = date.toLocaleString('default', { month: 'short' });
+      
+      // Could extend incomeHistory to add new entry
+      console.log(`Income updated to ${newIncomeValue} on ${incomeDate} (${month})`);
+      
       setNewIncomeValue('');
+      setIncomeDate(getCurrentDate());
       setActiveModal(null);
     }
   };
@@ -115,7 +155,7 @@ export function useLifestyleLock() {
     };
     
     setDeposits([...deposits, newDeposit]);
-    setDepositDate('');
+    setDepositDate(getCurrentDate());
     setDepositAmount('');
     setDepositAccount('401k');
     setActiveModal(null);
@@ -136,7 +176,8 @@ export function useLifestyleLock() {
               category: expenseCategory, 
               spent: Number(expenseSpent), 
               baseline: Number(expenseBaseline),
-              icon: result.icon 
+              icon: result.icon,
+              date: expenseDate
             } 
           : exp
       ));
@@ -161,7 +202,8 @@ export function useLifestyleLock() {
         category: expenseCategory,
         spent: Number(expenseSpent),
         baseline: Number(expenseBaseline),
-        icon: result.icon
+        icon: result.icon,
+        date: expenseDate
       };
       setExpenses([...expenses, newExpense]);
     }
@@ -169,6 +211,7 @@ export function useLifestyleLock() {
     setExpenseCategory('');
     setExpenseSpent('');
     setExpenseBaseline('');
+    setExpenseDate(getCurrentDate());
     setActiveModal(null);
   };
 
@@ -192,6 +235,7 @@ export function useLifestyleLock() {
     setExpenseCategory('');
     setExpenseSpent('');
     setExpenseBaseline('');
+    setExpenseDate(getCurrentDate());
   };
 
   return {
@@ -227,12 +271,16 @@ export function useLifestyleLock() {
     // Form data
     newIncomeValue,
     setNewIncomeValue,
+    incomeDate,
+    setIncomeDate,
     expenseCategory,
     setExpenseCategory,
     expenseSpent, 
     setExpenseSpent,
     expenseBaseline,
     setExpenseBaseline,
+    expenseDate,
+    setExpenseDate,
     editingExpense,
     setEditingExpense,
     depositDate,
@@ -249,6 +297,9 @@ export function useLifestyleLock() {
     
     // Chart data
     allocationData,
-    projectionData
+    projectionData,
+    
+    // Utility functions
+    getCurrentDate
   };
 }

@@ -12,6 +12,8 @@ interface ModalsContainerProps {
   // Income modal props
   newIncomeValue: string;
   setNewIncomeValue: (value: string) => void;
+  incomeDate: string;
+  setIncomeDate: (value: string) => void;
   handleIncomeIncrease: () => void;
   
   // Expense modal props
@@ -21,6 +23,8 @@ interface ModalsContainerProps {
   setExpenseSpent: (value: string) => void;
   expenseBaseline: string;
   setExpenseBaseline: (value: string) => void;
+  expenseDate: string;
+  setExpenseDate: (value: string) => void;
   handleExpenseSubmit: () => void;
   editingExpense: number | null;
   resetExpenseForm: () => void;
@@ -33,6 +37,9 @@ interface ModalsContainerProps {
   depositAccount: string;
   setDepositAccount: (value: string) => void;
   handleAddDeposit: () => void;
+  
+  // Utility
+  getCurrentDate: () => string;
 }
 
 const ModalsContainer = ({
@@ -40,6 +47,8 @@ const ModalsContainer = ({
   setActiveModal,
   newIncomeValue,
   setNewIncomeValue,
+  incomeDate,
+  setIncomeDate,
   handleIncomeIncrease,
   expenseCategory,
   setExpenseCategory,
@@ -47,6 +56,8 @@ const ModalsContainer = ({
   setExpenseSpent,
   expenseBaseline,
   setExpenseBaseline,
+  expenseDate,
+  setExpenseDate,
   handleExpenseSubmit,
   editingExpense,
   resetExpenseForm,
@@ -56,7 +67,8 @@ const ModalsContainer = ({
   setDepositAmount,
   depositAccount,
   setDepositAccount,
-  handleAddDeposit
+  handleAddDeposit,
+  getCurrentDate
 }: ModalsContainerProps) => {
   const [merchantName, setMerchantName] = useState('');
   const [baselineModified, setBaselineModified] = useState(false);
@@ -120,13 +132,26 @@ const ModalsContainer = ({
           <div className="p-6 relative z-10">
             <h2 className="text-xl font-semibold text-slate-800 mb-4">Income Increase</h2>
             <p className="mb-4 text-slate-600">Enter your new monthly income:</p>
-            <input
-              type="number"
-              value={newIncomeValue}
-              onChange={(e) => setNewIncomeValue(e.target.value)}
-              className="w-full p-3 border border-slate-200 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-              placeholder="New monthly income"
-            />
+            <div className="space-y-4">
+              <input
+                type="number"
+                value={newIncomeValue}
+                onChange={(e) => setNewIncomeValue(e.target.value)}
+                className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                placeholder="New monthly income"
+              />
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Date of Income Change</label>
+                <input
+                  type="date"
+                  value={incomeDate}
+                  onChange={(e) => setIncomeDate(e.target.value)}
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                />
+                <p className="mt-1 text-xs text-slate-500">Default is today's date</p>
+              </div>
+            </div>
             <div className="flex justify-end space-x-3 mt-6">
               <button 
                 onClick={closeActiveModal} 
@@ -206,6 +231,17 @@ const ModalsContainer = ({
                   placeholder="0"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Date of Expense</label>
+                <input
+                  type="date"
+                  value={expenseDate}
+                  onChange={(e) => setExpenseDate(e.target.value)}
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                />
+                <p className="mt-1 text-xs text-slate-500">Default is today's date</p>
+              </div>
             </div>
             
             <div className="flex justify-end space-x-3 mt-6">
@@ -239,6 +275,7 @@ const ModalsContainer = ({
                   onChange={(e) => setDepositDate(e.target.value)}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 />
+                <p className="mt-1 text-xs text-slate-500">Default is today's date</p>
               </div>
               
               <div>

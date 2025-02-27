@@ -34,6 +34,15 @@ const ExpensesView = ({
     }).format(value);
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -140,6 +149,9 @@ const ExpensesView = ({
                     </span>
                   )}
                 </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  {expense.date && formatDate(expense.date)}
+                </p>
               </div>
             </div>
             <div className="flex space-x-3">

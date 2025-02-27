@@ -43,12 +43,16 @@ const Index = () => {
     
     newIncomeValue,
     setNewIncomeValue,
+    incomeDate,
+    setIncomeDate,
     expenseCategory,
     setExpenseCategory,
     expenseSpent, 
     setExpenseSpent,
     expenseBaseline,
     setExpenseBaseline,
+    expenseDate,
+    setExpenseDate,
     editingExpense,
     setEditingExpense,
     depositDate,
@@ -63,7 +67,9 @@ const Index = () => {
     resetExpenseForm,
     
     allocationData,
-    projectionData
+    projectionData,
+    
+    getCurrentDate
   } = useLifestyleLock();
 
   // Simulate loading effect
@@ -202,6 +208,8 @@ const Index = () => {
         setActiveModal={setActiveModal}
         newIncomeValue={newIncomeValue}
         setNewIncomeValue={setNewIncomeValue}
+        incomeDate={incomeDate}
+        setIncomeDate={setIncomeDate}
         handleIncomeIncrease={handleIncomeIncrease}
         expenseCategory={expenseCategory}
         setExpenseCategory={setExpenseCategory}
@@ -209,6 +217,8 @@ const Index = () => {
         setExpenseSpent={setExpenseSpent}
         expenseBaseline={expenseBaseline}
         setExpenseBaseline={setExpenseBaseline}
+        expenseDate={expenseDate}
+        setExpenseDate={setExpenseDate}
         handleExpenseSubmit={handleExpenseSubmit}
         editingExpense={editingExpense}
         resetExpenseForm={resetExpenseForm}
@@ -219,6 +229,7 @@ const Index = () => {
         depositAccount={depositAccount}
         setDepositAccount={setDepositAccount}
         handleAddDeposit={handleAddDeposit}
+        getCurrentDate={getCurrentDate}
       />
     </>
   );
