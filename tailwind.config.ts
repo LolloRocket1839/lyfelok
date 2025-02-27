@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -84,12 +85,33 @@ export default {
 					to: {
 						height: '0'
 					}
-				}
+				},
+				shimmer: {
+					'100%': {
+						transform: 'translateX(100%)',
+					},
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				shimmer: 'shimmer 2s infinite',
+			},
+			fontFamily: {
+				sans: [
+					'Inter', 
+					'-apple-system', 
+					'BlinkMacSystemFont', 
+					'Segoe UI', 
+					'Roboto', 
+					'Helvetica', 
+					'Arial', 
+					'sans-serif',
+				],
+			},
+			boxShadow: {
+				'soft': '0 2px 16px rgba(0, 0, 0, 0.05)',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
