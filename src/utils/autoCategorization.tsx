@@ -4,7 +4,7 @@ import { Home, ShoppingBag, Coffee, Car, Smartphone } from 'lucide-react';
 
 /**
  * A list of mappings between common merchant keywords and expense categories.
- * Each mapping contains a regex pattern for matching and the corresponding category and icon name.
+ * Each mapping contains a regex pattern for matching and the corresponding category and icon type.
  */
 const expenseMappings = [
   { regex: /uber|lyft|taxi|cab|metro|subway|train|bus|transit/i, category: "Transport", iconType: "car" },
