@@ -168,26 +168,26 @@ const ModalsContainer = ({
       case 'income':
         return (
           <div className="p-6 relative z-10">
-            <h2 className="text-xl font-semibold text-slate-800 mb-4">Income Increase</h2>
-            <p className="mb-4 text-slate-600">Enter your new monthly income:</p>
+            <h2 className="text-xl font-semibold text-slate-800 mb-4">Aumento Reddito</h2>
+            <p className="mb-4 text-slate-600">Inserisci il tuo nuovo reddito mensile:</p>
             <div className="space-y-4">
               <input
                 type="number"
                 value={newIncomeValue}
                 onChange={(e) => setNewIncomeValue(e.target.value)}
                 className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                placeholder="New monthly income"
+                placeholder="Nuovo reddito mensile"
               />
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Date of Income Change</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Data di Variazione Reddito</label>
                 <input
                   type="date"
                   value={incomeDate}
                   onChange={(e) => setIncomeDate(e.target.value)}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 />
-                <p className="mt-1 text-xs text-slate-500">Default is today's date</p>
+                <p className="mt-1 text-xs text-slate-500">Predefinito è la data odierna</p>
               </div>
             </div>
             <div className="flex justify-end space-x-3 mt-6">
@@ -195,13 +195,13 @@ const ModalsContainer = ({
                 onClick={closeActiveModal} 
                 className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                Annulla
               </button>
               <button 
                 onClick={handleIncomeIncrease} 
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-sm"
               >
-                Update Income
+                Aggiorna Reddito
               </button>
             </div>
           </div>
@@ -211,40 +211,40 @@ const ModalsContainer = ({
         return (
           <div className="p-6 relative z-10">
             <h2 className="text-xl font-semibold text-slate-800 mb-4">
-              {editingExpense ? 'Edit Expense' : 'Add New Expense'}
+              {editingExpense ? 'Modifica Spesa' : 'Aggiungi Nuova Spesa'}
             </h2>
             <div className="space-y-4">
               {!editingExpense && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Merchant Name</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nome Esercente</label>
                   <input
                     type="text"
                     value={merchantName}
                     onChange={handleMerchantChange}
                     className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    placeholder="e.g., Uber, Starbucks, Amazon"
+                    placeholder="es., Uber, Starbucks, Amazon"
                   />
                   {merchantName && (
                     <p className="mt-1 text-xs text-emerald-600">
-                      {expenseCategory ? `Auto-categorized as: ${expenseCategory}` : "No category detected"}
+                      {expenseCategory ? `Auto-categorizzato come: ${expenseCategory}` : "Nessuna categoria rilevata"}
                     </p>
                   )}
                 </div>
               )}
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
                 <input
                   type="text"
                   value={expenseCategory}
                   onChange={handleCategoryChange}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  placeholder="e.g. Housing, Food, Entertainment"
+                  placeholder="es. Alloggio, Cibo, Intrattenimento"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Amount Spent</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Importo Speso</label>
                 <input
                   type="number"
                   value={expenseSpent}
@@ -256,12 +256,12 @@ const ModalsContainer = ({
               
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Baseline Budget
+                  Budget Base
                   {!baselineModified && !editingExpense && (
                     <span className="ml-2 text-xs text-slate-500">
                       {findCategoryBaseline(expenseCategory) 
-                        ? "(Auto-set from category history)" 
-                        : "(Auto-set to match amount spent)"}
+                        ? "(Auto-impostato dalla cronologia categoria)" 
+                        : "(Auto-impostato per corrispondere all'importo speso)"}
                     </span>
                   )}
                 </label>
@@ -275,14 +275,14 @@ const ModalsContainer = ({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Date of Expense</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Data della Spesa</label>
                 <input
                   type="date"
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 />
-                <p className="mt-1 text-xs text-slate-500">Default is today's date</p>
+                <p className="mt-1 text-xs text-slate-500">Predefinito è la data odierna</p>
               </div>
             </div>
             
@@ -291,13 +291,13 @@ const ModalsContainer = ({
                 onClick={closeActiveModal}
                 className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                Annulla
               </button>
               <button 
                 onClick={handleExpenseSubmit} 
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-sm"
               >
-                {editingExpense ? 'Update Expense' : 'Add Expense'}
+                {editingExpense ? 'Aggiorna Spesa' : 'Aggiungi Spesa'}
               </button>
             </div>
           </div>
@@ -306,22 +306,22 @@ const ModalsContainer = ({
       case 'deposit':
         return (
           <div className="p-6 relative z-10">
-            <h2 className="text-xl font-semibold text-slate-800 mb-4">Add Investment</h2>
+            <h2 className="text-xl font-semibold text-slate-800 mb-4">Aggiungi Investimento</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Data</label>
                 <input
                   type="date"
                   value={depositDate}
                   onChange={(e) => setDepositDate(e.target.value)}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 />
-                <p className="mt-1 text-xs text-slate-500">Default is today's date</p>
+                <p className="mt-1 text-xs text-slate-500">Predefinito è la data odierna</p>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Account</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Conto</label>
                 <select
                   value={depositAccount}
                   onChange={(e) => setDepositAccount(e.target.value)}
@@ -335,7 +335,7 @@ const ModalsContainer = ({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Importo</label>
                 <input
                   type="number"
                   value={depositAmount}
@@ -351,13 +351,13 @@ const ModalsContainer = ({
                 onClick={closeActiveModal}
                 className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                Annulla
               </button>
               <button 
                 onClick={handleAddDeposit} 
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-sm"
               >
-                Add Investment
+                Aggiungi Investimento
               </button>
             </div>
           </div>

@@ -12,6 +12,14 @@ interface HeaderNavProps {
 }
 
 const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavProps) => {
+  // Map English view names to Italian
+  const viewLabels = {
+    dashboard: 'Dashboard',
+    investments: 'Investimenti',
+    expenses: 'Spese',
+    projections: 'Proiezioni'
+  };
+
   return (
     <motion.header 
       initial={{ y: -20, opacity: 0 }}
@@ -37,7 +45,7 @@ const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavPro
                 : 'hover:bg-slate-700/50'
             }`}
           >
-            {navItem.charAt(0).toUpperCase() + navItem.slice(1)}
+            {viewLabels[navItem]}
           </button>
         ))}
       </nav>
@@ -49,7 +57,7 @@ const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavPro
         onClick={() => setActiveModal('income')}
         className="mt-4 sm:mt-0 bg-emerald-500 hover:bg-emerald-600 transition-colors duration-300 px-4 py-2 rounded-full flex items-center shadow-sm"
       >
-        <ArrowUpCircle size={16} className="mr-2" /> Income Increase
+        <ArrowUpCircle size={16} className="mr-2" /> Aumento Reddito
       </motion.button>
     </motion.header>
   );

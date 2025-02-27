@@ -162,22 +162,22 @@ const Index = () => {
                 ? (
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <p className="font-medium">Warning: Your spending is over your baseline budget!</p>
-                      <p className="text-sm mt-1">You're spending ${totalSpent - baselineLifestyle} more than your baseline budget.</p>
+                      <p className="font-medium">Attenzione: La tua spesa supera il budget di base!</p>
+                      <p className="text-sm mt-1">Stai spendendo €{totalSpent - baselineLifestyle} in più rispetto al tuo budget di base.</p>
                     </div>
                     <button className="px-3 py-1.5 bg-white text-red-600 rounded-lg shadow-sm text-sm border border-red-100">
-                      Review Budget
+                      Rivedi Budget
                     </button>
                   </div>
                 ) 
                 : (
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <p className="font-medium">Great job! All expenses are within your baseline lifestyle.</p>
-                      <p className="text-sm mt-1">You're under budget by ${baselineLifestyle - totalSpent}.</p>
+                      <p className="font-medium">Ottimo lavoro! Tutte le spese sono entro il tuo stile di vita di base.</p>
+                      <p className="text-sm mt-1">Sei sotto budget di €{baselineLifestyle - totalSpent}.</p>
                     </div>
                     <div className="px-3 py-1.5 bg-white text-emerald-600 rounded-lg shadow-sm text-sm border border-emerald-100">
-                      On Track
+                      In Linea
                     </div>
                   </div>
                 )

@@ -37,19 +37,27 @@ const DashboardView = ({
   lifestyleAllocation
 }: DashboardViewProps) => {
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('it-IT', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       maximumFractionDigits: 0
     }).format(value);
   };
+
+  // Translate allocation data names to Italian
+  const translatedAllocationData = allocationData.map(item => ({
+    ...item,
+    name: item.name === 'Investments' ? 'Investimenti' : 
+          item.name === 'Savings' ? 'Risparmi' : 
+          item.name === 'Lifestyle' ? 'Stile di Vita' : item.name
+  }));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 shadow-lg rounded-lg border border-slate-100">
           <p className="text-sm font-medium text-slate-800">{`${label}`}</p>
-          <p className="text-sm text-emerald-600 font-medium">{`Income: ${formatCurrency(payload[0].value)}`}</p>
+          <p className="text-sm text-emerald-600 font-medium">{`Reddito: ${formatCurrency(payload[0].value)}`}</p>
         </div>
       );
     }
@@ -61,7 +69,7 @@ const DashboardView = ({
       return (
         <div className="bg-white p-3 shadow-lg rounded-lg border border-slate-100">
           <p className="text-sm font-medium">{`${payload[0].name}`}</p>
-          <p className="text-sm text-emerald-600 font-medium">{`Amount: ${formatCurrency(payload[0].value)}`}</p>
+          <p className="text-sm text-emerald-600 font-medium">{`Importo: ${formatCurrency(payload[0].value)}`}</p>
         </div>
       );
     }
@@ -82,25 +90,25 @@ const DashboardView = ({
       >
         <div className="p-5 border-b border-slate-100">
           <h2 className="text-lg font-medium flex items-center text-slate-800">
-            <DollarSign size={20} className="mr-2 text-emerald-500" /> Income Overview
+            <DollarSign size={20} className="mr-2 text-emerald-500" /> Panoramica Reddito
           </h2>
         </div>
         <div className="p-5">
           <div className="grid grid-cols-2 gap-4">
             <motion.div variants={slideUp} className="rounded-xl p-4 bg-slate-50 border border-slate-100">
-              <p className="text-sm text-slate-500">Previous Income</p>
+              <p className="text-sm text-slate-500">Reddito Precedente</p>
               <p className="text-2xl font-medium text-slate-800">{formatCurrency(previousIncome)}</p>
             </motion.div>
             <motion.div variants={slideUp} className="rounded-xl p-4 bg-blue-50 border border-blue-100">
-              <p className="text-sm text-slate-500">Current Income</p>
+              <p className="text-sm text-slate-500">Reddito Attuale</p>
               <p className="text-2xl font-medium text-slate-800">{formatCurrency(income)}</p>
             </motion.div>
             <motion.div variants={slideUp} className="rounded-xl p-4 bg-slate-50 border border-slate-100">
-              <p className="text-sm text-slate-500">Baseline Lifestyle</p>
+              <p className="text-sm text-slate-500">Stile di Vita Base</p>
               <p className="text-2xl font-medium text-slate-800">{formatCurrency(baselineLifestyle)}</p>
             </motion.div>
             <motion.div variants={slideUp} className="rounded-xl p-4 bg-emerald-50 border border-emerald-100">
-              <p className="text-sm text-slate-500">Growth Potential</p>
+              <p className="text-sm text-slate-500">Potenziale di Crescita</p>
               <p className="text-2xl font-medium text-slate-800">{formatCurrency(income - baselineLifestyle)}</p>
             </motion.div>
           </div>
@@ -113,14 +121,14 @@ const DashboardView = ({
         className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-100"
       >
         <div className="p-5 border-b border-slate-100">
-          <h2 className="text-lg font-medium text-slate-800">Income Growth</h2>
+          <h2 className="text-lg font-medium text-slate-800">Crescita del Reddito</h2>
         </div>
         <div className="p-5 h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={incomeHistory} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" stroke="#64748b" tick={{ fill: '#64748b' }} />
-              <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} tickFormatter={(value) => `$${value}`} />
+              <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} tickFormatter={(value) => `€${value}`} />
               <Tooltip content={<CustomTooltip />} />
               <Line 
                 type="stepAfter" 
@@ -142,7 +150,7 @@ const DashboardView = ({
       >
         <div className="p-5 border-b border-slate-100">
           <h2 className="text-lg font-medium flex items-center text-slate-800">
-            <Award size={20} className="mr-2 text-emerald-500" /> Lifestyle Restraint
+            <Award size={20} className="mr-2 text-emerald-500" /> Controllo Stile di Vita
           </h2>
         </div>
         <div className="p-5 flex items-center justify-center">
@@ -177,14 +185,14 @@ const DashboardView = ({
               >
                 {restraintScore}
               </motion.p>
-              <p className="text-xs text-slate-500">SCORE</p>
+              <p className="text-xs text-slate-500">PUNTEGGIO</p>
             </div>
           </motion.div>
           <div className="ml-6">
-            <p className="font-medium text-slate-800">Keep it up!</p>
-            <p className="text-sm text-slate-500">You're saving {restraintScore}% of your income increases</p>
+            <p className="font-medium text-slate-800">Continua così!</p>
+            <p className="text-sm text-slate-500">Stai risparmiando il {restraintScore}% dei tuoi aumenti di reddito</p>
             <div className="mt-3 text-xs px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full inline-block">
-              Top 10% of users
+              Top 10% degli utenti
             </div>
           </div>
         </div>
@@ -197,7 +205,7 @@ const DashboardView = ({
       >
         <div className="p-5 border-b border-slate-100">
           <h2 className="text-lg font-medium flex items-center text-slate-800">
-            <TrendingUp size={20} className="mr-2 text-emerald-500" /> New Income Allocation
+            <TrendingUp size={20} className="mr-2 text-emerald-500" /> Allocazione Nuovo Reddito
           </h2>
         </div>
         <div className="p-5">
@@ -205,7 +213,7 @@ const DashboardView = ({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={allocationData}
+                  data={translatedAllocationData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -217,7 +225,7 @@ const DashboardView = ({
                   animationBegin={500}
                   animationDuration={1500}
                 >
-                  {allocationData.map((entry, index) => (
+                  {translatedAllocationData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -227,15 +235,15 @@ const DashboardView = ({
           </div>
           <div className="grid grid-cols-3 gap-3 mt-2">
             <div className="text-center p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-              <p className="text-xs text-slate-500">Investments</p>
+              <p className="text-xs text-slate-500">Investimenti</p>
               <p className="font-medium text-slate-800">{formatCurrency(investmentAllocation)}</p>
             </div>
             <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <p className="text-xs text-slate-500">Savings</p>
+              <p className="text-xs text-slate-500">Risparmi</p>
               <p className="font-medium text-slate-800">{formatCurrency(savingsAllocation)}</p>
             </div>
             <div className="text-center p-3 bg-amber-50 rounded-lg border border-amber-100">
-              <p className="text-xs text-slate-500">Lifestyle</p>
+              <p className="text-xs text-slate-500">Stile di Vita</p>
               <p className="font-medium text-slate-800">{formatCurrency(lifestyleAllocation)}</p>
             </div>
           </div>
@@ -249,7 +257,7 @@ const DashboardView = ({
       >
         <div className="p-5 border-b border-slate-100">
           <h2 className="text-lg font-medium flex items-center text-slate-800">
-            <TrendingUp size={20} className="mr-2 text-emerald-500" /> Assets Growth
+            <TrendingUp size={20} className="mr-2 text-emerald-500" /> Crescita Patrimoniale
           </h2>
         </div>
         <div className="p-5">
@@ -257,21 +265,21 @@ const DashboardView = ({
             <div className="md:col-span-2">
               <div className="grid grid-cols-2 gap-4">
                 <motion.div variants={slideUp} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <p className="text-sm text-slate-500">Investments</p>
+                  <p className="text-sm text-slate-500">Investimenti</p>
                   <p className="text-2xl font-medium text-slate-800">{formatCurrency(investments)}</p>
                 </motion.div>
                 <motion.div variants={slideUp} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <p className="text-sm text-slate-500">Savings</p>
+                  <p className="text-sm text-slate-500">Risparmi</p>
                   <p className="text-2xl font-medium text-slate-800">{formatCurrency(savings)}</p>
                 </motion.div>
               </div>
             </div>
             <div className="md:col-span-2 p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <p className="text-sm text-slate-500">Net Worth</p>
+              <p className="text-sm text-slate-500">Patrimonio Netto</p>
               <p className="text-2xl font-medium text-slate-800">{formatCurrency(investments + savings)}</p>
               <div className="flex items-center mt-2">
                 <div className="text-xs px-2 py-1 bg-emerald-100 text-emerald-800 rounded-full">
-                  +{formatCurrency(newIncome)} this month
+                  +{formatCurrency(newIncome)} questo mese
                 </div>
               </div>
             </div>

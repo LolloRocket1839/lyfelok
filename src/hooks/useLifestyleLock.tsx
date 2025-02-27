@@ -44,7 +44,7 @@ const getCurrentDate = (): string => {
 // Helper function to get current month name
 const getCurrentMonth = (): string => {
   const today = new Date();
-  return today.toLocaleString('default', { month: 'long' });
+  return today.toLocaleString('it-IT', { month: 'long' });
 };
 
 export function useLifestyleLock() {
@@ -61,15 +61,15 @@ export function useLifestyleLock() {
 
   // Tracking states
   const [incomeHistory] = useState<IncomeHistoryItem[]>([
-    { month: 'Jan', income: 4000, date: '2025-01-01' },
+    { month: 'Gen', income: 4000, date: '2025-01-01' },
     { month: 'Feb', income: 4000, date: '2025-02-01' },
     { month: 'Mar', income: 4000, date: '2025-03-01' },
     { month: 'Apr', income: 4500, date: '2025-04-01' },
-    { month: 'May', income: 4500, date: '2025-05-01' },
-    { month: 'Jun', income: 4500, date: '2025-06-01' },
-    { month: 'Jul', income: 5000, date: '2025-07-01' },
-    { month: 'Aug', income: 5000, date: '2025-08-01' },
-    { month: 'Sep', income: 5000, date: '2025-09-01' }
+    { month: 'Mag', income: 4500, date: '2025-05-01' },
+    { month: 'Giu', income: 4500, date: '2025-06-01' },
+    { month: 'Lug', income: 5000, date: '2025-07-01' },
+    { month: 'Ago', income: 5000, date: '2025-08-01' },
+    { month: 'Set', income: 5000, date: '2025-09-01' }
   ]);
   
   const [deposits, setDeposits] = useState<DepositItem[]>([
@@ -78,13 +78,13 @@ export function useLifestyleLock() {
     { id: 3, date: '2025-03-15', amount: 500, account: 'Brokerage' }
   ]);
 
-  // Expense tracking
+  // Expense tracking with Italian categories
   const [expenses, setExpenses] = useState<ExpenseItem[]>([
-    { id: 1, category: 'Housing', spent: 1200, baseline: 1200, icon: <Home size={18} />, date: '2025-09-01' },
-    { id: 2, category: 'Food', spent: 600, baseline: 800, icon: <ShoppingBag size={18} />, date: '2025-09-05' },
-    { id: 3, category: 'Entertainment', spent: 300, baseline: 400, icon: <Coffee size={18} />, date: '2025-09-10' },
-    { id: 4, category: 'Transport', spent: 400, baseline: 400, icon: <Car size={18} />, date: '2025-09-15' },
-    { id: 5, category: 'Other', spent: 200, baseline: 200, icon: <Smartphone size={18} />, date: '2025-09-20' }
+    { id: 1, category: 'Alloggio', spent: 1200, baseline: 1200, icon: <Home size={18} />, date: '2025-09-01' },
+    { id: 2, category: 'Cibo', spent: 600, baseline: 800, icon: <ShoppingBag size={18} />, date: '2025-09-05' },
+    { id: 3, category: 'Intrattenimento', spent: 300, baseline: 400, icon: <Coffee size={18} />, date: '2025-09-10' },
+    { id: 4, category: 'Trasporto', spent: 400, baseline: 400, icon: <Car size={18} />, date: '2025-09-15' },
+    { id: 5, category: 'Altro', spent: 200, baseline: 200, icon: <Smartphone size={18} />, date: '2025-09-20' }
   ]);
   
   // Form states
@@ -132,10 +132,10 @@ export function useLifestyleLock() {
       
       // Add to income history with the selected date
       const date = new Date(incomeDate);
-      const month = date.toLocaleString('default', { month: 'short' });
+      const month = date.toLocaleString('it-IT', { month: 'short' });
       
       // Could extend incomeHistory to add new entry
-      console.log(`Income updated to ${newIncomeValue} on ${incomeDate} (${month})`);
+      console.log(`Reddito aggiornato a ${newIncomeValue} il ${incomeDate} (${month})`);
       
       setNewIncomeValue('');
       setIncomeDate(getCurrentDate());
@@ -187,9 +187,9 @@ export function useLifestyleLock() {
         // Determine icon type based on category
         let iconType = "smartphone";
         if (expenseCategory.toLowerCase().includes("transport")) iconType = "car";
-        else if (expenseCategory.toLowerCase().includes("food")) iconType = "shopping-bag";
-        else if (expenseCategory.toLowerCase().includes("entertainment")) iconType = "coffee";
-        else if (expenseCategory.toLowerCase().includes("home") || expenseCategory.toLowerCase().includes("house")) iconType = "home";
+        else if (expenseCategory.toLowerCase().includes("food") || expenseCategory.toLowerCase().includes("cibo")) iconType = "shopping-bag";
+        else if (expenseCategory.toLowerCase().includes("entertainment") || expenseCategory.toLowerCase().includes("intrattenimento")) iconType = "coffee";
+        else if (expenseCategory.toLowerCase().includes("home") || expenseCategory.toLowerCase().includes("house") || expenseCategory.toLowerCase().includes("alloggio")) iconType = "home";
         
         // Add a custom rule with the exact category name
         addCustomRule(expenseCategory, iconType, [createMerchantPattern(expenseCategory)]);
@@ -215,19 +215,19 @@ export function useLifestyleLock() {
     setActiveModal(null);
   };
 
-  // Data for allocation chart
+  // Data for allocation chart (translated to Italian)
   const allocationData = [
-    { name: 'Investments', value: investmentAllocation, color: '#34D399' },
-    { name: 'Savings', value: savingsAllocation, color: '#60A5FA' },
-    { name: 'Lifestyle', value: lifestyleAllocation, color: '#FBBF24' }
+    { name: 'Investimenti', value: investmentAllocation, color: '#34D399' },
+    { name: 'Risparmi', value: savingsAllocation, color: '#60A5FA' },
+    { name: 'Stile di Vita', value: lifestyleAllocation, color: '#FBBF24' }
   ];
 
-  // Data for projection chart
+  // Data for projection chart (translated to Italian)
   const projectionData = [
-    { name: 'Year 1', withRestraint: investments + savings, withoutRestraint: (investments + savings) * 0.4 },
-    { name: 'Year 3', withRestraint: (investments + savings) * 1.8, withoutRestraint: (investments + savings) * 0.8 },
-    { name: 'Year 5', withRestraint: (investments + savings) * 3, withoutRestraint: (investments + savings) * 1.2 },
-    { name: 'Year 10', withRestraint: (investments + savings) * 6, withoutRestraint: (investments + savings) * 2 }
+    { name: 'Anno 1', withRestraint: investments + savings, withoutRestraint: (investments + savings) * 0.4 },
+    { name: 'Anno 3', withRestraint: (investments + savings) * 1.8, withoutRestraint: (investments + savings) * 0.8 },
+    { name: 'Anno 5', withRestraint: (investments + savings) * 3, withoutRestraint: (investments + savings) * 1.2 },
+    { name: 'Anno 10', withRestraint: (investments + savings) * 6, withoutRestraint: (investments + savings) * 2 }
   ];
 
   const resetExpenseForm = () => {

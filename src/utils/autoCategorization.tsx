@@ -7,12 +7,12 @@ import { Home, ShoppingBag, Coffee, Car, Smartphone } from 'lucide-react';
  * Each mapping contains a regex pattern for matching and the corresponding category and icon type.
  */
 const expenseMappings = [
-  { regex: /uber|lyft|taxi|cab|metro|subway|train|bus|transit/i, category: "Transport", iconType: "car" },
-  { regex: /grocery|food|restaurant|cafe|starbucks|coffee|mcdonald|burger|pizza|taco|chipotle|panera/i, category: "Food", iconType: "shopping-bag" },
+  { regex: /uber|lyft|taxi|cab|metro|subway|train|bus|transit/i, category: "Trasporto", iconType: "car" },
+  { regex: /grocery|food|restaurant|cafe|starbucks|coffee|mcdonald|burger|pizza|taco|chipotle|panera/i, category: "Cibo", iconType: "shopping-bag" },
   { regex: /amazon|walmart|target|shopping|store|shop|mall|clothing|electronics|apple/i, category: "Shopping", iconType: "shopping-bag" },
-  { regex: /movie|netflix|spotify|hulu|disney|theater|concert|entertainment|game|steam/i, category: "Entertainment", iconType: "coffee" },
-  { regex: /rent|mortgage|apartment|housing|home|condo|lease|property/i, category: "Housing", iconType: "home" },
-  { regex: /phone|internet|cable|utility|electric|water|gas|bill|subscription/i, category: "Utilities", iconType: "smartphone" },
+  { regex: /movie|netflix|spotify|hulu|disney|theater|concert|entertainment|game|steam/i, category: "Intrattenimento", iconType: "coffee" },
+  { regex: /rent|mortgage|apartment|housing|home|condo|lease|property/i, category: "Alloggio", iconType: "home" },
+  { regex: /phone|internet|cable|utility|electric|water|gas|bill|subscription/i, category: "Utenze", iconType: "smartphone" },
 ];
 
 /**
@@ -57,7 +57,7 @@ class RuleBasedCategorizer {
       iconType: mapping.iconType
     }));
     
-    this.defaultCategory = "Other";
+    this.defaultCategory = "Altro";
     this.defaultIconType = "smartphone";
     
     // Log the rules for debugging
@@ -168,8 +168,8 @@ export function createMerchantPattern(merchantName: string): RegExp {
     /dollar (tree|general|store)/i
   ]);
   
-  // Food
-  addCustomRule("Food", "shopping-bag", [
+  // Food/Cibo
+  addCustomRule("Cibo", "shopping-bag", [
     /kroger/i,
     /safeway/i,
     /publix/i,
@@ -185,11 +185,17 @@ export function createMerchantPattern(merchantName: string): RegExp {
     /kfc/i,
     /popeyes/i,
     /chick-fil-a/i,
-    /dunkin'? donuts/i
+    /dunkin'? donuts/i,
+    /ristorante/i,
+    /pizzeria/i,
+    /trattoria/i,
+    /osteria/i,
+    /panetteria/i,
+    /pasticceria/i
   ]);
   
-  // Entertainment
-  addCustomRule("Entertainment", "coffee", [
+  // Entertainment/Intrattenimento
+  addCustomRule("Intrattenimento", "coffee", [
     /amc/i,
     /regal/i,
     /cinemark/i,
@@ -202,11 +208,15 @@ export function createMerchantPattern(merchantName: string): RegExp {
     /peacock/i,
     /eventbrite/i,
     /ticketmaster/i,
-    /stubhub/i
+    /stubhub/i,
+    /cinema/i,
+    /teatro/i,
+    /concerto/i,
+    /museo/i
   ]);
   
-  // Transport
-  addCustomRule("Transport", "car", [
+  // Transport/Trasporto
+  addCustomRule("Trasporto", "car", [
     /gas station/i,
     /shell/i,
     /chevron/i,
@@ -223,11 +233,20 @@ export function createMerchantPattern(merchantName: string): RegExp {
     /amtrak/i,
     /greyhound/i,
     /parking/i,
-    /toll/i
+    /toll/i,
+    /benzina/i,
+    /autostrada/i,
+    /treno/i,
+    /aereo/i,
+    /volo/i,
+    /trenitalia/i,
+    /italo/i,
+    /metro/i,
+    /autobus/i
   ]);
   
-  // Utilities
-  addCustomRule("Utilities", "smartphone", [
+  // Utilities/Utenze
+  addCustomRule("Utenze", "smartphone", [
     /at&t/i,
     /verizon/i,
     /t-mobile/i,
@@ -241,7 +260,28 @@ export function createMerchantPattern(merchantName: string): RegExp {
     /water bill/i,
     /sewer/i,
     /trash/i,
-    /waste management/i
+    /waste management/i,
+    /telefono/i,
+    /telecom/i,
+    /tim/i,
+    /vodafone/i,
+    /wind/i,
+    /iliad/i,
+    /fastweb/i,
+    /enel/i,
+    /luce/i,
+    /gas/i,
+    /acqua/i,
+    /rifiuti/i
+  ]);
+  
+  // Housing/Alloggio
+  addCustomRule("Alloggio", "home", [
+    /affitto/i,
+    /mutuo/i,
+    /condominio/i,
+    /casa/i,
+    /appartamento/i
   ]);
   
   console.log("Initialized additional merchant patterns");

@@ -27,16 +27,16 @@ const ExpensesView = ({
   setExpenseBaseline
 }: ExpensesViewProps) => {
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('it-IT', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       maximumFractionDigits: 0
     }).format(value);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('it-IT', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
@@ -78,7 +78,7 @@ const ExpensesView = ({
       className="space-y-6"
     >
       <div className="flex justify-between items-center">
-        <motion.h2 variants={fadeIn} className="text-xl font-medium text-slate-800">Monthly Expenses</motion.h2>
+        <motion.h2 variants={fadeIn} className="text-xl font-medium text-slate-800">Spese Mensili</motion.h2>
         <motion.button 
           variants={slideUp}
           onClick={() => {
@@ -87,7 +87,7 @@ const ExpensesView = ({
           }}
           className="bg-emerald-500 hover:bg-emerald-600 transition-colors duration-300 text-white px-4 py-2 rounded-full flex items-center shadow-sm"
         >
-          <Plus size={16} className="mr-2" /> Add Expense
+          <Plus size={16} className="mr-2" /> Aggiungi Spesa
         </motion.button>
       </div>
       
@@ -96,7 +96,7 @@ const ExpensesView = ({
         className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-100"
       >
         <div className="p-5 border-b border-slate-100">
-          <h3 className="text-lg font-medium text-slate-800">Expense Breakdown</h3>
+          <h3 className="text-lg font-medium text-slate-800">Ripartizione Spese</h3>
         </div>
         <div className="p-5 h-[350px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -106,11 +106,11 @@ const ExpensesView = ({
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="category" stroke="#64748b" tick={{ fill: '#64748b' }} />
-              <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} tickFormatter={(value) => `$${value}`} />
+              <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} tickFormatter={(value) => `€${value}`} />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
-              <Bar dataKey="baseline" name="Baseline Budget" fill="#818cf8" radius={[4, 4, 0, 0]} barSize={25} />
-              <Bar dataKey="spent" name="Actual Spent" fill="#10b981" radius={[4, 4, 0, 0]} barSize={25} />
+              <Bar dataKey="baseline" name="Budget Base" fill="#818cf8" radius={[4, 4, 0, 0]} barSize={25} />
+              <Bar dataKey="spent" name="Spesa Effettiva" fill="#10b981" radius={[4, 4, 0, 0]} barSize={25} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -140,12 +140,12 @@ const ExpensesView = ({
                   </p>
                   {expense.spent <= expense.baseline && (
                     <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                      Under budget
+                      Sotto budget
                     </span>
                   )}
                   {expense.spent > expense.baseline && (
                     <span className="text-xs px-2 py-0.5 bg-red-100 text-red-800 rounded-full">
-                      Over budget
+                      Sopra budget
                     </span>
                   )}
                 </div>
