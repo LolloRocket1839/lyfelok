@@ -2,7 +2,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { modalAnimation, overlayAnimation } from '@/lib/animations';
 import { ModalType } from '@/hooks/useLifestyleLock';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { autoCategorize } from '@/utils/autoCategorization';
 
 interface ModalsContainerProps {
@@ -72,12 +72,22 @@ const ModalsContainer = ({
     const name = e.target.value;
     setMerchantName(name);
     
-    // Only auto-categorize if there's no editing happening and the field is empty
-    if (!editingExpense && !expenseCategory) {
+    // Only auto-categorize if there's no editing happening and the field has content
+    if (!editingExpense && name.trim() !== '') {
+      console.log(`Attempting to categorize merchant: ${name}`);
       const result = autoCategorize(name);
+      console.log(`Categorization result:`, result);
       setExpenseCategory(result.category);
     }
   };
+
+  // Test the autoCategorize function when the component mounts
+  useEffect(() => {
+    console.log('Testing auto-categorization:');
+    console.log('Walmart:', autoCategorize('Walmart').category);
+    console.log('Amazon:', autoCategorize('Amazon').category);
+    console.log('Uber:', autoCategorize('Uber').category);
+  }, []);
 
   const renderModalContent = () => {
     switch (activeModal) {

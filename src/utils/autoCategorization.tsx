@@ -59,16 +59,22 @@ class RuleBasedCategorizer {
     
     this.defaultCategory = "Other";
     this.defaultIconType = "smartphone";
+    
+    // Log the rules for debugging
+    console.log("Initialized categorizer with rules:", this.categoryRules);
   }
 
   // Find category for a merchant
   categorize(merchantName: string): { category: string; iconType: string } {
     if (!merchantName) return { category: this.defaultCategory, iconType: this.defaultIconType };
     
+    console.log(`Attempting to categorize: "${merchantName}"`);
+    
     // Try to match each pattern
     for (const rule of this.categoryRules) {
       for (const pattern of rule.patterns) {
         if (pattern.test(merchantName)) {
+          console.log(`Match found: "${merchantName}" matches pattern ${pattern}, category: ${rule.category}`);
           return { 
             category: rule.category, 
             iconType: rule.iconType 
@@ -78,6 +84,7 @@ class RuleBasedCategorizer {
     }
     
     // No match found
+    console.log(`No match found for: "${merchantName}", using default category: ${this.defaultCategory}`);
     return { 
       category: this.defaultCategory, 
       iconType: this.defaultIconType 
@@ -92,6 +99,7 @@ class RuleBasedCategorizer {
     if (existingRule) {
       // Add patterns to existing category
       existingRule.patterns = [...existingRule.patterns, ...patterns];
+      console.log(`Added new patterns to existing category "${category}":`, patterns);
     } else {
       // Create new category
       this.categoryRules.push({
@@ -99,6 +107,7 @@ class RuleBasedCategorizer {
         patterns,
         iconType
       });
+      console.log(`Created new category "${category}" with patterns:`, patterns);
     }
   }
 }
@@ -140,3 +149,100 @@ export function createMerchantPattern(merchantName: string): RegExp {
   const escaped = merchantName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(escaped, 'i');
 }
+
+// Add some additional common merchants for better coverage
+(function initializeAdditionalMerchants() {
+  // Shopping
+  addCustomRule("Shopping", "shopping-bag", [
+    /costco/i,
+    /best buy/i,
+    /home depot/i,
+    /lowe's/i,
+    /ikea/i,
+    /macy's/i,
+    /nordstrom/i,
+    /tj ?maxx/i,
+    /marshalls/i,
+    /ross/i,
+    /kohl's/i,
+    /dollar (tree|general|store)/i
+  ]);
+  
+  // Food
+  addCustomRule("Food", "shopping-bag", [
+    /kroger/i,
+    /safeway/i,
+    /publix/i,
+    /whole foods/i,
+    /trader joe's/i,
+    /aldi/i,
+    /save-a-lot/i,
+    /wendy's/i,
+    /burger king/i,
+    /taco bell/i,
+    /domino's/i,
+    /papa john's/i,
+    /kfc/i,
+    /popeyes/i,
+    /chick-fil-a/i,
+    /dunkin'? donuts/i
+  ]);
+  
+  // Entertainment
+  addCustomRule("Entertainment", "coffee", [
+    /amc/i,
+    /regal/i,
+    /cinemark/i,
+    /playstation/i,
+    /xbox/i,
+    /nintendo/i,
+    /apple tv/i,
+    /amazon prime/i,
+    /paramount\+/i,
+    /peacock/i,
+    /eventbrite/i,
+    /ticketmaster/i,
+    /stubhub/i
+  ]);
+  
+  // Transport
+  addCustomRule("Transport", "car", [
+    /gas station/i,
+    /shell/i,
+    /chevron/i,
+    /exxon/i,
+    /mobil/i,
+    /bp/i,
+    /delta/i,
+    /southwest/i,
+    /united/i,
+    /american airlines/i,
+    /hertz/i,
+    /enterprise/i,
+    /avis/i,
+    /amtrak/i,
+    /greyhound/i,
+    /parking/i,
+    /toll/i
+  ]);
+  
+  // Utilities
+  addCustomRule("Utilities", "smartphone", [
+    /at&t/i,
+    /verizon/i,
+    /t-mobile/i,
+    /sprint/i,
+    /xfinity/i,
+    /comcast/i,
+    /spectrum/i,
+    /cox/i,
+    /pg&e/i,
+    /edison/i,
+    /water bill/i,
+    /sewer/i,
+    /trash/i,
+    /waste management/i
+  ]);
+  
+  console.log("Initialized additional merchant patterns");
+})();
