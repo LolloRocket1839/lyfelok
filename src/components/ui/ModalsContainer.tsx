@@ -181,6 +181,17 @@ const ModalsContainer = ({
     }
   };
 
+  // Handle investment category change
+  const handleInvestmentCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const category = e.target.value;
+    setInvestmentCategory(category);
+    
+    // Se la categoria è "Liquidità", ripuliamo la descrizione poiché non è necessaria
+    if (category === 'Liquidità') {
+      setInvestmentDescription('');
+    }
+  };
+
   // Reset baselineModified flag when editing expense changes
   useEffect(() => {
     setBaselineModified(false);
@@ -347,26 +358,10 @@ const ModalsContainer = ({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Descrizione/Nome</label>
-                <input
-                  type="text"
-                  value={investmentDescription}
-                  onChange={handleInvestmentDescriptionChange}
-                  className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  placeholder="es. ETF MSCI World, BTP 10 anni, Azioni Enel"
-                />
-                {investmentDescription && investmentCategory && (
-                  <p className="mt-1 text-xs text-emerald-600">
-                    Auto-categorizzato come: {investmentCategory}
-                  </p>
-                )}
-              </div>
-              
-              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
                 <select
                   value={investmentCategory}
-                  onChange={(e) => setInvestmentCategory(e.target.value)}
+                  onChange={handleInvestmentCategoryChange}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
                 >
                   <option value="">Seleziona una categoria</option>
@@ -375,6 +370,25 @@ const ModalsContainer = ({
                   ))}
                 </select>
               </div>
+              
+              {/* Mostra il campo descrizione solo se la categoria non è Liquidità */}
+              {investmentCategory !== 'Liquidità' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Descrizione/Nome</label>
+                  <input
+                    type="text"
+                    value={investmentDescription}
+                    onChange={handleInvestmentDescriptionChange}
+                    className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="es. ETF MSCI World, BTP 10 anni, Azioni Enel"
+                  />
+                  {investmentDescription && investmentCategory && (
+                    <p className="mt-1 text-xs text-emerald-600">
+                      Auto-categorizzato come: {investmentCategory}
+                    </p>
+                  )}
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Importo</label>

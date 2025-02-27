@@ -149,14 +149,15 @@ export function useLifestyleLock() {
 
   // Handle deposit add
   const handleAddDeposit = () => {
-    if (!depositDate || !depositAmount) return;
+    if (!depositDate || !depositAmount || !depositCategory) return;
     
     const newDeposit = {
       id: Date.now(),
       date: depositDate,
       amount: Number(depositAmount),
-      description: depositDescription || undefined,
-      category: depositCategory || undefined
+      // Se la categoria è Liquidità, non aggiungiamo la descrizione
+      description: depositCategory === 'Liquidità' ? undefined : (depositDescription || undefined),
+      category: depositCategory
     };
     
     setDeposits([...deposits, newDeposit]);
