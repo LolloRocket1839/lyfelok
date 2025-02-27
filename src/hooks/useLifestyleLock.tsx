@@ -7,7 +7,7 @@ import {
   Car, 
   Smartphone 
 } from 'lucide-react';
-import { autoCategorize } from '@/utils/autoCategorization';
+import { autoCategorize, addCustomRule, createMerchantPattern } from '@/utils/autoCategorization';
 
 export type ExpenseItem = {
   id: number;
@@ -140,6 +140,20 @@ export function useLifestyleLock() {
             } 
           : exp
       ));
+      
+      // If this is a user correction, add a custom rule for future categorizations
+      if (result.category !== expenseCategory) {
+        // Determine icon type based on category
+        let iconType = "smartphone";
+        if (expenseCategory.toLowerCase().includes("transport")) iconType = "car";
+        else if (expenseCategory.toLowerCase().includes("food")) iconType = "shopping-bag";
+        else if (expenseCategory.toLowerCase().includes("entertainment")) iconType = "coffee";
+        else if (expenseCategory.toLowerCase().includes("home") || expenseCategory.toLowerCase().includes("house")) iconType = "home";
+        
+        // Add a custom rule with the exact category name
+        addCustomRule(expenseCategory, iconType, [createMerchantPattern(expenseCategory)]);
+      }
+      
       setEditingExpense(null);
     } else {
       const newExpense = {
