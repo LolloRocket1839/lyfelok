@@ -1,4 +1,3 @@
-
 import { motion, AnimatePresence } from 'framer-motion';
 import { modalAnimation, overlayAnimation } from '@/lib/animations';
 import { ModalType } from '@/hooks/useLifestyleLock';
@@ -82,6 +81,23 @@ const ModalsContainer = ({
     setActiveModal(null);
   };
 
+  // Find the most recent baseline for a category from existing expenses
+  const findCategoryBaseline = (category: string) => {
+    // Get all expenses with this category
+    const categoryExpenses = window.__lifestyleLock.expenses.filter(
+      exp => exp.category.toLowerCase() === category.toLowerCase()
+    );
+
+    if (categoryExpenses.length > 0) {
+      // Sort by date descending and get the most recent baseline
+      const sortedExpenses = categoryExpenses.sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      return sortedExpenses[0].baseline;
+    }
+    return null;
+  };
+
   const handleMerchantChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setMerchantName(name);
@@ -91,17 +107,42 @@ const ModalsContainer = ({
       console.log(`Attempting to categorize merchant: ${name}`);
       const result = autoCategorize(name);
       console.log(`Categorization result:`, result);
+      
+      // Set the category
       setExpenseCategory(result.category);
+      
+      // Find and set the baseline for this category if it exists
+      const existingBaseline = findCategoryBaseline(result.category);
+      if (existingBaseline && !baselineModified) {
+        setExpenseBaseline(existingBaseline.toString());
+      }
     }
   };
 
-  // Handle expense amount change - auto-set baseline if not modified
+  // Handle category change to update baseline
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const category = e.target.value;
+    setExpenseCategory(category);
+    
+    // Only update baseline if it hasn't been manually modified
+    if (!baselineModified && !editingExpense) {
+      const existingBaseline = findCategoryBaseline(category);
+      if (existingBaseline) {
+        setExpenseBaseline(existingBaseline.toString());
+      }
+    }
+  };
+
+  // Handle expense amount change - auto-set baseline if not modified and no category baseline exists
   const handleExpenseAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const amount = e.target.value;
     setExpenseSpent(amount);
     
-    // Automatically set baseline to the same as spent if it hasn't been manually modified
-    if (!baselineModified && !editingExpense) {
+    // Only set baseline to match spent if:
+    // 1. Baseline hasn't been manually modified
+    // 2. We're not editing an existing expense
+    // 3. There's no existing baseline for this category
+    if (!baselineModified && !editingExpense && !findCategoryBaseline(expenseCategory)) {
       setExpenseBaseline(amount);
     }
   };
@@ -111,14 +152,6 @@ const ModalsContainer = ({
     setExpenseBaseline(e.target.value);
     setBaselineModified(true);
   };
-
-  // Test the autoCategorize function when the component mounts
-  useEffect(() => {
-    console.log('Testing auto-categorization:');
-    console.log('Walmart:', autoCategorize('Walmart').category);
-    console.log('Amazon:', autoCategorize('Amazon').category);
-    console.log('Uber:', autoCategorize('Uber').category);
-  }, []);
 
   // Reset baselineModified flag when editing expense changes
   useEffect(() => {
@@ -199,7 +232,7 @@ const ModalsContainer = ({
                 <input
                   type="text"
                   value={expenseCategory}
-                  onChange={(e) => setExpenseCategory(e.target.value)}
+                  onChange={handleCategoryChange}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   placeholder="e.g. Housing, Food, Entertainment"
                 />
@@ -220,7 +253,11 @@ const ModalsContainer = ({
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Baseline Budget
                   {!baselineModified && !editingExpense && (
-                    <span className="ml-2 text-xs text-slate-500">(Auto-set to match amount spent)</span>
+                    <span className="ml-2 text-xs text-slate-500">
+                      {findCategoryBaseline(expenseCategory) 
+                        ? "(Auto-set from category history)" 
+                        : "(Auto-set to match amount spent)"}
+                    </span>
                   )}
                 </label>
                 <input
