@@ -23,13 +23,6 @@ const InvestmentsView = ({ deposits, totalDeposits, setActiveModal }: Investment
       maximumFractionDigits: 0
     }).format(value);
   };
-
-  const getAccountLabel = (account: string) => {
-    switch(account) {
-      case '401k': return '401(k)';
-      default: return account;
-    }
-  };
   
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -136,7 +129,6 @@ const InvestmentsView = ({ deposits, totalDeposits, setActiveModal }: Investment
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Descrizione</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Categoria</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Conto</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Importo</th>
                 </tr>
               </thead>
@@ -164,9 +156,6 @@ const InvestmentsView = ({ deposits, totalDeposits, setActiveModal }: Investment
                       ) : (
                         'Non Categorizzato'
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-800">
-                      {getAccountLabel(deposit.account)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-emerald-600">
                       {formatCurrency(deposit.amount)}

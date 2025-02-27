@@ -23,7 +23,6 @@ export type DepositItem = {
   id: number;
   date: string;
   amount: number;
-  account: string;
   description?: string;
   category?: string;
 };
@@ -76,9 +75,9 @@ export function useLifestyleLock() {
   ]);
   
   const [deposits, setDeposits] = useState<DepositItem[]>([
-    { id: 1, date: '2025-01-15', amount: 700, account: '401k', description: 'ETF MSCI World', category: 'ETF' },
-    { id: 2, date: '2025-02-15', amount: 700, account: '401k', description: 'Bond Governativo', category: 'Obbligazioni' },
-    { id: 3, date: '2025-03-15', amount: 500, account: 'Brokerage', description: 'Azioni Enel', category: 'Azioni' }
+    { id: 1, date: '2025-01-15', amount: 700, description: 'ETF MSCI World', category: 'ETF' },
+    { id: 2, date: '2025-02-15', amount: 700, description: 'Bond Governativo', category: 'Obbligazioni' },
+    { id: 3, date: '2025-03-15', amount: 500, description: 'Azioni Enel', category: 'Azioni' }
   ]);
 
   // Expense tracking with Italian categories
@@ -100,7 +99,7 @@ export function useLifestyleLock() {
   const [editingExpense, setEditingExpense] = useState<number | null>(null);
   const [depositDate, setDepositDate] = useState(getCurrentDate());
   const [depositAmount, setDepositAmount] = useState('');
-  const [depositAccount, setDepositAccount] = useState('401k');
+  const [depositAccount, setDepositAccount] = useState('');
   const [depositDescription, setDepositDescription] = useState('');
   const [depositCategory, setDepositCategory] = useState('');
 
@@ -150,13 +149,12 @@ export function useLifestyleLock() {
 
   // Handle deposit add
   const handleAddDeposit = () => {
-    if (!depositDate || !depositAmount || !depositAccount) return;
+    if (!depositDate || !depositAmount) return;
     
     const newDeposit = {
       id: Date.now(),
       date: depositDate,
       amount: Number(depositAmount),
-      account: depositAccount,
       description: depositDescription || undefined,
       category: depositCategory || undefined
     };
@@ -164,7 +162,6 @@ export function useLifestyleLock() {
     setDeposits([...deposits, newDeposit]);
     setDepositDate(getCurrentDate());
     setDepositAmount('');
-    setDepositAccount('401k');
     setDepositDescription('');
     setDepositCategory('');
     setActiveModal(null);

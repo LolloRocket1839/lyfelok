@@ -377,22 +377,6 @@ const ModalsContainer = ({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Conto</label>
-                <select
-                  value={depositAccount}
-                  onChange={(e) => setDepositAccount(e.target.value)}
-                  className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
-                >
-                  <option value="401k">401(k)</option>
-                  <option value="IRA">IRA</option>
-                  <option value="Roth IRA">Roth IRA</option>
-                  <option value="Brokerage">Brokerage</option>
-                  <option value="Pensione">Pensione</option>
-                  <option value="Liquidità">Liquidità</option>
-                </select>
-              </div>
-              
-              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Importo</label>
                 <input
                   type="number"
