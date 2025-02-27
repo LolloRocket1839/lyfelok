@@ -38,6 +38,8 @@ interface ModalsContainerProps {
   depositAccount: string;
   setDepositAccount: (value: string) => void;
   handleAddDeposit: () => void;
+  editingDeposit: number | null;
+  resetDepositForm: () => void;
   
   // Utility
   getCurrentDate: () => string;
@@ -72,6 +74,8 @@ const ModalsContainer = ({
   depositAccount,
   setDepositAccount,
   handleAddDeposit,
+  editingDeposit,
+  resetDepositForm,
   getCurrentDate,
   expenses
 }: ModalsContainerProps) => {
@@ -86,6 +90,7 @@ const ModalsContainer = ({
       setMerchantName('');
       setBaselineModified(false);
     } else if (activeModal === 'deposit') {
+      resetDepositForm();
       setInvestmentDescription('');
       setInvestmentCategory('');
     }
@@ -169,7 +174,7 @@ const ModalsContainer = ({
     const description = e.target.value;
     setInvestmentDescription(description);
     
-    if (description.trim() !== '') {
+    if (description.trim() !== '' && !editingDeposit) {
       const result = categorizeInvestment({ 
         name: description, 
         description: description 
@@ -332,7 +337,9 @@ const ModalsContainer = ({
       case 'deposit':
         return (
           <div className="p-6 relative z-10">
-            <h2 className="text-xl font-semibold text-slate-800 mb-4">Aggiungi Investimento</h2>
+            <h2 className="text-xl font-semibold text-slate-800 mb-4">
+              {editingDeposit ? 'Modifica Investimento' : 'Aggiungi Investimento'}
+            </h2>
             
             <div className="space-y-4">
               <div>
@@ -349,8 +356,8 @@ const ModalsContainer = ({
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
                 <select
-                  value={investmentCategory}
-                  onChange={(e) => setInvestmentCategory(e.target.value)}
+                  value={depositCategory}
+                  onChange={(e) => setDepositCategory(e.target.value)}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
                 >
                   <option value="">Seleziona una categoria</option>
@@ -364,14 +371,14 @@ const ModalsContainer = ({
                 <label className="block text-sm font-medium text-slate-700 mb-1">Descrizione/Nome</label>
                 <input
                   type="text"
-                  value={investmentDescription}
+                  value={depositDescription}
                   onChange={handleInvestmentDescriptionChange}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   placeholder="es. ETF MSCI World, BTP 10 anni, Azioni Enel"
                 />
-                {investmentDescription && investmentCategory && (
+                {depositDescription && depositCategory && !editingDeposit && (
                   <p className="mt-1 text-xs text-emerald-600">
-                    Auto-categorizzato come: {investmentCategory}
+                    Auto-categorizzato come: {depositCategory}
                   </p>
                 )}
               </div>
@@ -399,7 +406,7 @@ const ModalsContainer = ({
                 onClick={handleAddDeposit} 
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-sm"
               >
-                Aggiungi Investimento
+                {editingDeposit ? 'Aggiorna Investimento' : 'Aggiungi Investimento'}
               </button>
             </div>
           </div>

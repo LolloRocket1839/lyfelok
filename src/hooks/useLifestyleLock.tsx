@@ -102,6 +102,7 @@ export function useLifestyleLock() {
   const [depositAccount, setDepositAccount] = useState('');
   const [depositDescription, setDepositDescription] = useState('');
   const [depositCategory, setDepositCategory] = useState('');
+  const [editingDeposit, setEditingDeposit] = useState<number | null>(null);
 
   // Update current month on component mount and when date changes
   useEffect(() => {
@@ -147,24 +148,72 @@ export function useLifestyleLock() {
     }
   };
 
-  // Handle deposit add
+  // Handle deposit add/edit
   const handleAddDeposit = () => {
     if (!depositDate || !depositAmount || !depositCategory) return;
     
-    const newDeposit = {
-      id: Date.now(),
-      date: depositDate,
-      amount: Number(depositAmount),
-      description: depositDescription || undefined,
-      category: depositCategory
-    };
+    if (editingDeposit) {
+      // Update existing deposit
+      setDeposits(deposits.map(dep => 
+        dep.id === editingDeposit 
+          ? { 
+              ...dep, 
+              date: depositDate,
+              amount: Number(depositAmount),
+              description: depositDescription || undefined,
+              category: depositCategory
+            } 
+          : dep
+      ));
+      
+      setEditingDeposit(null);
+    } else {
+      // Add new deposit
+      const newDeposit = {
+        id: Date.now(),
+        date: depositDate,
+        amount: Number(depositAmount),
+        description: depositDescription || undefined,
+        category: depositCategory
+      };
+      
+      setDeposits([...deposits, newDeposit]);
+    }
     
-    setDeposits([...deposits, newDeposit]);
+    // Reset form fields
     setDepositDate(getCurrentDate());
     setDepositAmount('');
     setDepositDescription('');
     setDepositCategory('');
     setActiveModal(null);
+  };
+
+  // Delete deposit
+  const handleDeleteDeposit = (id: number) => {
+    setDeposits(deposits.filter(dep => dep.id !== id));
+  };
+
+  // Start editing a deposit
+  const startEditDeposit = (id: number) => {
+    const depositToEdit = deposits.find(dep => dep.id === id);
+    
+    if (depositToEdit) {
+      setDepositDate(depositToEdit.date);
+      setDepositAmount(depositToEdit.amount.toString());
+      setDepositDescription(depositToEdit.description || '');
+      setDepositCategory(depositToEdit.category || '');
+      setEditingDeposit(id);
+      setActiveModal('deposit');
+    }
+  };
+
+  // Reset deposit form
+  const resetDepositForm = () => {
+    setEditingDeposit(null);
+    setDepositDate(getCurrentDate());
+    setDepositAmount('');
+    setDepositDescription('');
+    setDepositCategory('');
   };
 
   // Handle expense add/edit
@@ -273,6 +322,8 @@ export function useLifestyleLock() {
     handleIncomeIncrease,
     handleAddDeposit,
     handleExpenseSubmit,
+    handleDeleteDeposit,
+    startEditDeposit,
     
     // Form data
     newIncomeValue,
@@ -299,11 +350,14 @@ export function useLifestyleLock() {
     setDepositDescription,
     depositCategory,
     setDepositCategory,
+    editingDeposit,
+    setEditingDeposit,
     
     // Modal control
     activeModal,
     setActiveModal,
     resetExpenseForm,
+    resetDepositForm,
     
     // Chart data
     allocationData,

@@ -1,6 +1,6 @@
 
 import { motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell
@@ -13,9 +13,17 @@ interface InvestmentsViewProps {
   deposits: DepositItem[];
   totalDeposits: number;
   setActiveModal: (modal: 'income' | 'expense' | 'deposit' | null) => void;
+  handleDeleteDeposit: (id: number) => void;
+  startEditDeposit: (id: number) => void;
 }
 
-const InvestmentsView = ({ deposits, totalDeposits, setActiveModal }: InvestmentsViewProps) => {
+const InvestmentsView = ({ 
+  deposits, 
+  totalDeposits, 
+  setActiveModal, 
+  handleDeleteDeposit, 
+  startEditDeposit 
+}: InvestmentsViewProps) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
@@ -130,6 +138,7 @@ const InvestmentsView = ({ deposits, totalDeposits, setActiveModal }: Investment
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Descrizione</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Categoria</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Importo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Azioni</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -159,6 +168,24 @@ const InvestmentsView = ({ deposits, totalDeposits, setActiveModal }: Investment
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-emerald-600">
                       {formatCurrency(deposit.amount)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => startEditDeposit(deposit.id)}
+                          className="text-blue-500 hover:text-blue-700 transition-colors"
+                          title="Modifica"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteDeposit(deposit.id)}
+                          className="text-red-500 hover:text-red-700 transition-colors"
+                          title="Elimina"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                 ))}

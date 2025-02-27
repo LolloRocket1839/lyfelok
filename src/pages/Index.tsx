@@ -40,6 +40,8 @@ const Index = () => {
     handleIncomeIncrease,
     handleAddDeposit,
     handleExpenseSubmit,
+    handleDeleteDeposit,
+    startEditDeposit,
     
     newIncomeValue,
     setNewIncomeValue,
@@ -61,6 +63,12 @@ const Index = () => {
     setDepositAmount,
     depositAccount,
     setDepositAccount,
+    depositDescription,
+    setDepositDescription,
+    depositCategory,
+    setDepositCategory,
+    editingDeposit,
+    resetDepositForm,
     
     activeModal,
     setActiveModal,
@@ -106,6 +114,8 @@ const Index = () => {
             deposits={deposits}
             totalDeposits={totalDeposits}
             setActiveModal={setActiveModal}
+            handleDeleteDeposit={handleDeleteDeposit}
+            startEditDeposit={startEditDeposit}
           />
         );
       case 'expenses':
@@ -229,6 +239,8 @@ const Index = () => {
         depositAccount={depositAccount}
         setDepositAccount={setDepositAccount}
         handleAddDeposit={handleAddDeposit}
+        editingDeposit={editingDeposit}
+        resetDepositForm={resetDepositForm}
         getCurrentDate={getCurrentDate}
         expenses={expenses}
       />
