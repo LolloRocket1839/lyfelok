@@ -59,11 +59,13 @@ const ModalsContainer = ({
   handleAddDeposit
 }: ModalsContainerProps) => {
   const [merchantName, setMerchantName] = useState('');
+  const [baselineModified, setBaselineModified] = useState(false);
 
   const closeActiveModal = () => {
     if (activeModal === 'expense') {
       resetExpenseForm();
       setMerchantName('');
+      setBaselineModified(false);
     }
     setActiveModal(null);
   };
@@ -81,6 +83,23 @@ const ModalsContainer = ({
     }
   };
 
+  // Handle expense amount change - auto-set baseline if not modified
+  const handleExpenseAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const amount = e.target.value;
+    setExpenseSpent(amount);
+    
+    // Automatically set baseline to the same as spent if it hasn't been manually modified
+    if (!baselineModified && !editingExpense) {
+      setExpenseBaseline(amount);
+    }
+  };
+
+  // Mark baseline as modified when user changes it
+  const handleBaselineChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setExpenseBaseline(e.target.value);
+    setBaselineModified(true);
+  };
+
   // Test the autoCategorize function when the component mounts
   useEffect(() => {
     console.log('Testing auto-categorization:');
@@ -88,6 +107,11 @@ const ModalsContainer = ({
     console.log('Amazon:', autoCategorize('Amazon').category);
     console.log('Uber:', autoCategorize('Uber').category);
   }, []);
+
+  // Reset baselineModified flag when editing expense changes
+  useEffect(() => {
+    setBaselineModified(false);
+  }, [editingExpense]);
 
   const renderModalContent = () => {
     switch (activeModal) {
@@ -161,18 +185,23 @@ const ModalsContainer = ({
                 <input
                   type="number"
                   value={expenseSpent}
-                  onChange={(e) => setExpenseSpent(e.target.value)}
+                  onChange={handleExpenseAmountChange}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   placeholder="0"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Baseline Budget</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Baseline Budget
+                  {!baselineModified && !editingExpense && (
+                    <span className="ml-2 text-xs text-slate-500">(Auto-set to match amount spent)</span>
+                  )}
+                </label>
                 <input
                   type="number"
                   value={expenseBaseline}
-                  onChange={(e) => setExpenseBaseline(e.target.value)}
+                  onChange={handleBaselineChange}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                   placeholder="0"
                 />
