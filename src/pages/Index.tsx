@@ -9,6 +9,7 @@ import ExpensesView from '@/components/expenses/ExpensesView';
 import ProjectionsView from '@/components/projections/ProjectionsView';
 import ModalsContainer from '@/components/ui/ModalsContainer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
+import ConversationalInterface from '@/components/cash-talk/ConversationalInterface';
 import { fadeIn } from '@/lib/animations';
 
 const Index = () => {
@@ -156,6 +157,18 @@ const Index = () => {
         />
         
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          {/* Area conversazionale persistente */}
+          {showContent && (
+            <motion.div 
+              variants={fadeIn}
+              initial="hidden"
+              animate="visible"
+              className="mb-6"
+            >
+              <ConversationalInterface viewSetter={setView} />
+            </motion.div>
+          )}
+          
           {/* Status banner */}
           {showContent && (
             <motion.div 
