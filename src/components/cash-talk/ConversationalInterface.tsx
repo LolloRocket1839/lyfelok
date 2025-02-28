@@ -137,6 +137,11 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       - "Ho investito 500€ in ETF"
       - "Quanto è il mio reddito attuale?"
       - "Mostrami le mie spese"
+      
+      Puoi anche usare frasi brevi senza verbo:
+      - "30 pizza" (spesa di 30€ per pizza)
+      - "stipendio 2000" (entrata di 2000€ come stipendio)
+      - "50 investimento" (investimento di 50€)
       `);
       setProcessing(false);
       return;
@@ -255,7 +260,8 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     "Ho speso 25€ per una cena",
     "Ricevuto stipendio di 1500€",
     "Investito 500€ in ETF",
-    "Mostrami le mie spese"
+    "30 pizza",
+    "stipendio 2000"
   ];
 
   const handleSuggestionClick = (suggestion: string) => {

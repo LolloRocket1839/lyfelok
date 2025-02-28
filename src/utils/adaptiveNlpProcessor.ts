@@ -37,15 +37,91 @@ class AdaptiveNlpProcessor {
         'ristorante': 'Cibo',
         'bar': 'Cibo',
         'pizza': 'Cibo',
+        'pranzo': 'Cibo',
+        'cena': 'Cibo',
+        'colazione': 'Cibo',
+        'caffè': 'Cibo',
+        'gelato': 'Cibo',
+        'spesa': 'Cibo',
+        'supermercato': 'Cibo',
+        'dolce': 'Cibo',
+        
         'treno': 'Trasporto',
         'bus': 'Trasporto',
         'taxi': 'Trasporto',
         'benzina': 'Trasporto',
+        'carburante': 'Trasporto',
+        'metro': 'Trasporto',
+        'biglietto': 'Trasporto',
+        'aereo': 'Trasporto',
+        'volo': 'Trasporto',
+        'parcheggio': 'Trasporto',
+        'autostrada': 'Trasporto',
+        'pedaggio': 'Trasporto',
+        
         'affitto': 'Alloggio',
         'bolletta': 'Alloggio',
+        'luce': 'Alloggio',
+        'gas': 'Alloggio',
+        'acqua': 'Alloggio',
+        'internet': 'Alloggio',
+        'telefono': 'Alloggio',
+        'wifi': 'Alloggio',
+        'condominio': 'Alloggio',
+        'mutuo': 'Alloggio',
+        
         'netflix': 'Intrattenimento',
         'cinema': 'Intrattenimento',
-        'spotify': 'Intrattenimento'
+        'concerto': 'Intrattenimento',
+        'teatro': 'Intrattenimento',
+        'spotify': 'Intrattenimento',
+        'abbonamento': 'Intrattenimento',
+        'videogioco': 'Intrattenimento',
+        'libro': 'Intrattenimento',
+        'musica': 'Intrattenimento',
+        'streaming': 'Intrattenimento',
+        'evento': 'Intrattenimento',
+        'mostra': 'Intrattenimento',
+        'museo': 'Intrattenimento',
+        
+        'farmacia': 'Salute',
+        'medico': 'Salute',
+        'dottore': 'Salute',
+        'visita': 'Salute',
+        'esame': 'Salute',
+        'dentista': 'Salute',
+        'medicinale': 'Salute',
+        'farmaco': 'Salute',
+        'terapia': 'Salute',
+        'ospedale': 'Salute',
+        'palestra': 'Salute',
+        
+        'vestiti': 'Shopping',
+        'scarpe': 'Shopping',
+        'camicia': 'Shopping',
+        'pantaloni': 'Shopping',
+        'maglia': 'Shopping',
+        'giacca': 'Shopping',
+        'accessorio': 'Shopping',
+        'borsa': 'Shopping',
+        'zaino': 'Shopping',
+        'negozio': 'Shopping',
+        'abbigliamento': 'Shopping',
+        
+        'stipendio': 'Stipendio',
+        'salario': 'Stipendio',
+        'bonus': 'Bonus',
+        'rimborso': 'Rimborsi',
+        'premio': 'Bonus',
+        
+        'investimento': 'ETF',
+        'azioni': 'Azioni',
+        'etf': 'ETF',
+        'fondo': 'Fondi',
+        'crypto': 'Crypto',
+        'bitcoin': 'Crypto',
+        'obbligazioni': 'Obbligazioni',
+        'bond': 'Obbligazioni',
       };
       
       this.initialized = true;
@@ -181,15 +257,6 @@ class AdaptiveNlpProcessor {
       }
     });
     
-    // Determina il tipo con il punteggio più alto
-    if (typeScore.entrata > typeScore.spesa && typeScore.entrata > typeScore.investimento) {
-      result.type = 'entrata';
-    } else if (typeScore.investimento > typeScore.spesa && typeScore.investimento > typeScore.entrata) {
-      result.type = 'investimento';
-    } else {
-      result.type = 'spesa'; // Default o se il punteggio di spesa è più alto
-    }
-    
     // Estrai importo con pattern matching avanzato per vari formati
     const amountPatterns = [
       /(\d+[.,]?\d*)[ ]?[€$]/g,                    // 25€, 25.50€
@@ -226,6 +293,47 @@ class AdaptiveNlpProcessor {
       }
     }
     
+    // NUOVA FUNZIONALITÀ: Pattern semplici senza verbo (analisi ellittica)
+    // Se non abbiamo trovato un importo, cerchiamo pattern come "30 pizza" o "pizza 30"
+    if (!amountMatch) {
+      // Pattern: NUMERO + PAROLA (es: "30 pizza")
+      const importoOggettoPattern = /(\d+[.,]?\d*)\s+([a-z]+)/i;
+      const importoOggettoMatch = lowerText.match(importoOggettoPattern);
+      
+      if (importoOggettoMatch) {
+        amountMatch = importoOggettoMatch[1].replace(',', '.');
+        // Aggiungiamo bonus al contesto della categoria
+        const possibleCategory = importoOggettoMatch[2];
+        if (this.categoryMappings[possibleCategory]) {
+          result.category = this.categoryMappings[possibleCategory];
+          result.confidence = 'high';
+        }
+      } else {
+        // Pattern: PAROLA + NUMERO (es: "pizza 30")
+        const oggettoImportoPattern = /([a-z]+)\s+(\d+[.,]?\d*)/i;
+        const oggettoImportoMatch = lowerText.match(oggettoImportoPattern);
+        
+        if (oggettoImportoMatch) {
+          amountMatch = oggettoImportoMatch[2].replace(',', '.');
+          // Aggiungiamo bonus al contesto della categoria
+          const possibleCategory = oggettoImportoMatch[1];
+          if (this.categoryMappings[possibleCategory]) {
+            result.category = this.categoryMappings[possibleCategory];
+            result.confidence = 'high';
+          }
+          
+          // Determina il tipo di transazione basato sulla parola
+          if (['stipendio', 'salario', 'bonus', 'rimborso'].includes(possibleCategory)) {
+            result.type = 'entrata';
+            result.confidence = 'high';
+          } else if (['investimento', 'azioni', 'etf', 'fondo', 'crypto', 'bitcoin'].includes(possibleCategory)) {
+            result.type = 'investimento';
+            result.confidence = 'high';
+          }
+        }
+      }
+    }
+    
     if (amountMatch) {
       // Normalizza il formato dell'importo (virgola -> punto)
       amountMatch = amountMatch.replace(',', '.');
@@ -238,7 +346,7 @@ class AdaptiveNlpProcessor {
         "ristorante", "trattoria", "pizzeria", "sushi", "fast food", "mcdonald", 
         "pranzo", "cena", "colazione", "brunch", "aperitivo", "bar", "caffè", "caffetteria",
         "espresso", "cappuccino", "pasticceria", "cornetto", "gelato", "supermercato", 
-        "spesa", "alimentari", "cibo", "alimentar", "grocery", "mangiato", "bevuto"
+        "spesa", "alimentari", "cibo", "alimentar", "grocery", "mangiato", "bevuto", "pizza"
       ],
       'Alloggio': [
         "affitto", "mutuo", "condominio", "casa", "bolletta", "utenze", "luce", 
