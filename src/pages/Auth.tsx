@@ -2,21 +2,121 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { User, LogIn, Mail, Lock } from 'lucide-react';
+import { User, LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useToast } from '@/components/ui/use-toast';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const { signIn, signUp, user, loading } = useAuth();
+  const { toast } = useToast();
+
+  // Gestione degli errori di validazione
+  const [errors, setErrors] = useState({
+    email: '',
+    confirmEmail: '',
+    password: '',
+    confirmPassword: ''
+  });
+
+  // Funzione per validare il form
+  const validateForm = () => {
+    const newErrors = {
+      email: '',
+      confirmEmail: '',
+      password: '',
+      confirmPassword: ''
+    };
+    let isValid = true;
+
+    // Validazione email
+    if (!email) {
+      newErrors.email = 'L\'email è obbligatoria';
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'L\'email non è valida';
+      isValid = false;
+    }
+
+    // Validazione conferma email (solo in registrazione)
+    if (!isLogin) {
+      if (email !== confirmEmail) {
+        newErrors.confirmEmail = 'Le email non coincidono';
+        isValid = false;
+      }
+    }
+
+    // Validazione password
+    if (!password) {
+      newErrors.password = 'La password è obbligatoria';
+      isValid = false;
+    } else if (password.length < 6) {
+      newErrors.password = 'La password deve essere di almeno 6 caratteri';
+      isValid = false;
+    }
+
+    // Validazione conferma password (solo in registrazione)
+    if (!isLogin) {
+      if (password !== confirmPassword) {
+        newErrors.confirmPassword = 'Le password non coincidono';
+        isValid = false;
+      }
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     if (isLogin) {
       await signIn(email, password);
     } else {
+      if (email !== confirmEmail) {
+        toast({
+          title: "Errore",
+          description: "Le email non coincidono",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        toast({
+          title: "Errore",
+          description: "Le password non coincidono",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       await signUp(email, password);
+    }
+  };
+
+  // Cambio modalità (login/registrazione)
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    // Reset errori e campi quando si cambia modalità
+    setErrors({
+      email: '',
+      confirmEmail: '',
+      password: '',
+      confirmPassword: ''
+    });
+    
+    if (isLogin) {
+      setConfirmEmail('');
+      setConfirmPassword('');
     }
   };
 
@@ -41,31 +141,91 @@ const Auth = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="Email"
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              {/* Campo Email */}
+              <div>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="Email"
+                    className={`w-full pl-10 pr-4 py-3 border ${errors.email ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  />
+                </div>
+                {errors.email && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center">
+                    <AlertCircle size={12} className="mr-1" /> {errors.email}
+                  </p>
+                )}
               </div>
+              
+              {/* Campo Conferma Email (solo in registrazione) */}
+              {!isLogin && (
+                <div>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="email"
+                      value={confirmEmail}
+                      onChange={(e) => setConfirmEmail(e.target.value)}
+                      required
+                      placeholder="Conferma Email"
+                      className={`w-full pl-10 pr-4 py-3 border ${errors.confirmEmail ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    />
+                  </div>
+                  {errors.confirmEmail && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle size={12} className="mr-1" /> {errors.confirmEmail}
+                    </p>
+                  )}
+                </div>
+              )}
 
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="Password"
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              {/* Campo Password */}
+              <div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="Password"
+                    className={`w-full pl-10 pr-4 py-3 border ${errors.password ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  />
+                </div>
+                {errors.password && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center">
+                    <AlertCircle size={12} className="mr-1" /> {errors.password}
+                  </p>
+                )}
               </div>
+              
+              {/* Campo Conferma Password (solo in registrazione) */}
+              {!isLogin && (
+                <div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      placeholder="Conferma Password"
+                      className={`w-full pl-10 pr-4 py-3 border ${errors.confirmPassword ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    />
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle size={12} className="mr-1" /> {errors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <button
@@ -94,7 +254,7 @@ const Auth = () => {
 
           <div className="mt-6 text-center">
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={toggleMode}
               className="text-blue-500 hover:underline focus:outline-none"
             >
               {isLogin
