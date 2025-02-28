@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingScreen from './LoadingScreen';
-import { supabase } from '@/integrations/supabase/client'; // Utilizza il client centralizzato
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -31,15 +31,17 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
         if (error) {
           console.error('Errore nel controllo dello stato di onboarding:', error);
-          setHasCompletedOnboarding(false);
+          // Imposta a true per evitare un ciclo infinito di reindirizzamenti
+          setHasCompletedOnboarding(true);
         } else {
-          // Aggiunto log per debug
           console.log('Stato onboarding:', data?.onboarding_completed);
-          setHasCompletedOnboarding(data?.onboarding_completed === true);
+          // Assicuriamoci che sia trattato come booleano
+          setHasCompletedOnboarding(data?.onboarding_completed !== false);
         }
       } catch (error) {
         console.error('Eccezione durante il controllo dello stato di onboarding:', error);
-        setHasCompletedOnboarding(false);
+        // Imposta a true per evitare un ciclo infinito di reindirizzamenti
+        setHasCompletedOnboarding(true);
       } finally {
         setCheckingOnboardingStatus(false);
       }
@@ -60,6 +62,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/auth" />;
   }
 
+  // Solo se è esplicitamente false, reindirizza all'onboarding
   if (user && hasCompletedOnboarding === false) {
     return <Navigate to="/onboarding" />;
   }
