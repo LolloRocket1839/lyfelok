@@ -1,8 +1,9 @@
 
 import { motion } from 'framer-motion';
-import { ArrowUpCircle } from 'lucide-react';
+import { ArrowUpCircle, LogOut } from 'lucide-react';
 import { AppView } from '@/hooks/useLifestyleLock';
 import { slideInRight } from '@/lib/animations';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface HeaderNavProps {
   view: AppView;
@@ -12,6 +13,7 @@ interface HeaderNavProps {
 }
 
 const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavProps) => {
+  const { signOut, user } = useAuth();
   // Map English view names to Italian
   const viewLabels = {
     dashboard: 'Dashboard',
@@ -32,6 +34,11 @@ const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavPro
         <div className="ml-4 px-3 py-1 bg-slate-700/70 backdrop-blur-sm rounded-full text-sm font-light">
           {currentMonth} 2025
         </div>
+        {user && (
+          <div className="ml-4 text-sm opacity-70">
+            {user.email}
+          </div>
+        )}
       </div>
       
       <nav className="flex flex-wrap justify-center gap-2">
@@ -50,15 +57,24 @@ const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavPro
         ))}
       </nav>
       
-      <motion.button 
-        variants={slideInRight}
-        initial="hidden"
-        animate="visible"
-        onClick={() => setActiveModal('income')}
-        className="mt-4 sm:mt-0 bg-emerald-500 hover:bg-emerald-600 transition-colors duration-300 px-4 py-2 rounded-full flex items-center shadow-sm"
-      >
-        <ArrowUpCircle size={16} className="mr-2" /> Aumento Reddito
-      </motion.button>
+      <div className="flex gap-2 mt-4 sm:mt-0">
+        <motion.button 
+          variants={slideInRight}
+          initial="hidden"
+          animate="visible"
+          onClick={() => setActiveModal('income')}
+          className="bg-emerald-500 hover:bg-emerald-600 transition-colors duration-300 px-4 py-2 rounded-full flex items-center shadow-sm"
+        >
+          <ArrowUpCircle size={16} className="mr-2" /> Aumento Reddito
+        </motion.button>
+        
+        <button 
+          onClick={() => signOut()}
+          className="bg-slate-700 hover:bg-slate-600 transition-colors duration-300 px-4 py-2 rounded-full flex items-center shadow-sm"
+        >
+          <LogOut size={16} className="mr-2" /> Esci
+        </button>
+      </div>
     </motion.header>
   );
 };
