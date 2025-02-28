@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 
 // Animazioni
 const slideUp = {
@@ -23,7 +21,6 @@ const fadeIn = {
 const Onboarding = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [income, setIncome] = useState<number | ''>('');
   const [housingExpense, setHousingExpense] = useState<number | ''>('');
@@ -85,67 +82,19 @@ const Onboarding = () => {
         setInvestments(investmentAmount);
       }
       
-      // Salva le preferenze nel database
-      saveUserPreferences();
-      
       // Mostra la schermata di completamento
       setTimeout(() => {
         setShowWelcomeScreen(true);
-      }, 1000);
-    }
-  };
-
-  // Salva le preferenze dell'utente nel database
-  const saveUserPreferences = async () => {
-    if (!user) return;
-    
-    try {
-      const baseLifestyle = Number(housingExpense) + Number(foodExpense) + Number(transportExpense);
-      
-      // Aggiorna il profilo dell'utente con le preferenze
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          income: income || 0,
-          housing_expense: housingExpense || 0,
-          food_expense: foodExpense || 0,
-          transport_expense: transportExpense || 0,
-          has_investments: hasInvestments || false,
-          investment_amount: hasInvestments ? (investmentAmount || 0) : 0,
-          onboarding_completed: true // Imposta subito a true quando salviamo
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        console.error('Errore durante il salvataggio delle preferenze:', error);
-        toast({
-          title: "Errore",
-          description: "Non è stato possibile salvare le tue preferenze",
-          variant: "destructive",
-        });
-      } else {
-        console.log('Onboarding completato con successo e salvato nel database');
-      }
-    } catch (error) {
-      console.error('Eccezione durante il salvataggio delle preferenze:', error);
+      }, 3000);
     }
   };
 
   // Calcola il totale delle spese di base
   const baseLifestyle = Number(housingExpense || 0) + Number(foodExpense || 0) + Number(transportExpense || 0);
 
-  // Vai alla dashboard e segna l'onboarding come completato
-  const goToDashboard = async () => {
-    // Forza un ritardo per assicurarsi che il profilo sia aggiornato
-    toast({
-      title: "Redirect in corso",
-      description: "Ti stiamo reindirizzando alla dashboard...",
-    });
-    
-    // Forza un hard refresh della pagina per assicurarsi che tutti i componenti vengano ricaricati
-    setTimeout(() => {
-      window.location.href = '/'; // Usa una navigazione diretta invece di react-router
-    }, 1500);
+  // Vai alla dashboard
+  const goToDashboard = () => {
+    navigate('/');
   };
 
   return (
@@ -383,14 +332,12 @@ const Onboarding = () => {
                 </div>
               </div>
               
-              <div className="flex gap-2 justify-center">
-                <button
-                  onClick={goToDashboard}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-4 px-8 rounded-xl transition-all hover:-translate-y-0.5"
-                >
-                  Vai alla Dashboard
-                </button>
-              </div>
+              <button
+                onClick={goToDashboard}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-4 px-8 rounded-xl transition-all hover:-translate-y-0.5"
+              >
+                Vai alla Dashboard
+              </button>
             </motion.div>
           )}
         </AnimatePresence>

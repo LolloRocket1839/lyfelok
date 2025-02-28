@@ -157,7 +157,6 @@ const Auth = () => {
 
     if (isLogin) {
       await signIn(email, password);
-      // Dopo il login, ProtectedRoute si occuperà del reindirizzamento verso onboarding se necessario
     } else {
       await signUp(email, password, customRedirectUrl || undefined);
       // Dopo la registrazione, mostra un toast e passa alla schermata di login

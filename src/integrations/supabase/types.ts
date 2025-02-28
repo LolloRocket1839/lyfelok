@@ -12,43 +12,22 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          food_expense: number | null
           full_name: string | null
-          has_investments: boolean | null
-          housing_expense: number | null
           id: string
-          income: number | null
-          investment_amount: number | null
-          onboarding_completed: boolean | null
-          transport_expense: number | null
           updated_at: string | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
-          food_expense?: number | null
           full_name?: string | null
-          has_investments?: boolean | null
-          housing_expense?: number | null
           id: string
-          income?: number | null
-          investment_amount?: number | null
-          onboarding_completed?: boolean | null
-          transport_expense?: number | null
           updated_at?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
-          food_expense?: number | null
           full_name?: string | null
-          has_investments?: boolean | null
-          housing_expense?: number | null
           id?: string
-          income?: number | null
-          investment_amount?: number | null
-          onboarding_completed?: boolean | null
-          transport_expense?: number | null
           updated_at?: string | null
           username?: string | null
         }
@@ -63,15 +42,8 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           avatar_url: string | null
-          food_expense: number | null
           full_name: string | null
-          has_investments: boolean | null
-          housing_expense: number | null
           id: string
-          income: number | null
-          investment_amount: number | null
-          onboarding_completed: boolean | null
-          transport_expense: number | null
           updated_at: string | null
           username: string | null
         }[]
