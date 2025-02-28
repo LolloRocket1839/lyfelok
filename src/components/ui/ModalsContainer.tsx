@@ -84,6 +84,10 @@ const ModalsContainer = ({
   const [investmentDescription, setInvestmentDescription] = useState('');
   const [investmentCategory, setInvestmentCategory] = useState('');
 
+  // Aggiungiamo le variabili mancanti per il funzionamento del componente
+  const [depositDescription, setDepositDescription] = useState('');
+  const [depositCategory, setDepositCategory] = useState('');
+
   const closeActiveModal = () => {
     if (activeModal === 'expense') {
       resetExpenseForm();
@@ -93,6 +97,8 @@ const ModalsContainer = ({
       resetDepositForm();
       setInvestmentDescription('');
       setInvestmentCategory('');
+      setDepositDescription('');
+      setDepositCategory('');
     }
     setActiveModal(null);
   };
@@ -173,6 +179,7 @@ const ModalsContainer = ({
   const handleInvestmentDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const description = e.target.value;
     setInvestmentDescription(description);
+    setDepositDescription(description);
     
     if (description.trim() !== '' && !editingDeposit) {
       const result = categorizeInvestment({ 
@@ -182,6 +189,7 @@ const ModalsContainer = ({
       
       if (result.category !== 'Non Categorizzato') {
         setInvestmentCategory(result.category);
+        setDepositCategory(result.category);
       }
     }
   };
