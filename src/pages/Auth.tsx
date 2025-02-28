@@ -36,7 +36,7 @@ const Auth = () => {
         try {
           const { error } = await supabase.auth.verifyOtp({
             token_hash,
-            type: 'email_confirmation',
+            type: 'signup', // Changed from 'email_confirmation' to 'signup' which is valid
           });
           
           if (error) {
