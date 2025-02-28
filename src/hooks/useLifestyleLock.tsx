@@ -296,17 +296,12 @@ export function useLifestyleLock() {
   return {
     // Financial data
     income,
-    setIncome,
     previousIncome,
-    setPreviousIncome,
     baselineLifestyle,
-    setBaselineLifestyle,
     currentMonth,
     restraintScore,
     investments,
-    setInvestments,
     savings,
-    setSavings,
     view,
     setView,
     incomeHistory,
