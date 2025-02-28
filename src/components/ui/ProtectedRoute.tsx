@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoadingScreen from './LoadingScreen';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client'; // Utilizza il client centralizzato
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -33,7 +33,9 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           console.error('Errore nel controllo dello stato di onboarding:', error);
           setHasCompletedOnboarding(false);
         } else {
-          setHasCompletedOnboarding(data?.onboarding_completed || false);
+          // Aggiunto log per debug
+          console.log('Stato onboarding:', data?.onboarding_completed);
+          setHasCompletedOnboarding(data?.onboarding_completed === true);
         }
       } catch (error) {
         console.error('Eccezione durante il controllo dello stato di onboarding:', error);

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client'; // Utilizza il client centralizzato
 
 // Animazioni
 const slideUp = {
@@ -111,7 +111,8 @@ const Onboarding = () => {
           food_expense: foodExpense || 0,
           transport_expense: transportExpense || 0,
           has_investments: hasInvestments || false,
-          investment_amount: hasInvestments ? (investmentAmount || 0) : 0
+          investment_amount: hasInvestments ? (investmentAmount || 0) : 0,
+          onboarding_completed: true // Imposta subito a true quando salviamo
         })
         .eq('id', user.id);
 
@@ -122,6 +123,8 @@ const Onboarding = () => {
           description: "Non è stato possibile salvare le tue preferenze",
           variant: "destructive",
         });
+      } else {
+        console.log('Onboarding completato con successo e salvato nel database');
       }
     } catch (error) {
       console.error('Eccezione durante il salvataggio delle preferenze:', error);
@@ -148,6 +151,8 @@ const Onboarding = () => {
             description: "Non è stato possibile salvare il tuo profilo",
             variant: "destructive",
           });
+        } else {
+          console.log('Flag onboarding_completed impostato a true');
         }
       } catch (error) {
         console.error('Eccezione durante l\'aggiornamento del profilo:', error);
