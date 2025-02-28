@@ -1,12 +1,17 @@
 
 import { useState, useEffect } from 'react';
 import { Coins, DollarSign } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, PanInfo } from 'framer-motion';
 import CashTalkDialog from './CashTalkDialog';
 
 export default function CashTalkButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Motion values per la posizione di trascinamento
+  const dragX = useMotionValue(0);
+  const dragY = useMotionValue(0);
 
   // Funzione per generare una nuova posizione casuale ma limitata alla parte centrale dello schermo
   const generateRandomPosition = () => {
@@ -17,23 +22,46 @@ export default function CashTalkButton() {
     return { x, y };
   };
 
-  // Cambia la posizione ogni minuto
+  // Cambia la posizione ogni minuto, ma solo se non è in trascinamento
   useEffect(() => {
     // Imposta una posizione iniziale
-    setPosition(generateRandomPosition());
-    
-    // Aggiorna la posizione ogni minuto
-    const interval = setInterval(() => {
+    if (!isDragging) {
       setPosition(generateRandomPosition());
+    }
+    
+    // Aggiorna la posizione ogni minuto, solo se non è in trascinamento
+    const interval = setInterval(() => {
+      if (!isDragging) {
+        setPosition(generateRandomPosition());
+      }
     }, 60000); // 60000ms = 1 minuto
     
     return () => clearInterval(interval);
-  }, []);
+  }, [isDragging]);
+
+  // Gestisce l'inizio del trascinamento
+  const handleDragStart = () => {
+    setIsDragging(true);
+  };
+
+  // Gestisce la fine del trascinamento
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setIsDragging(false);
+    // Aggiorna la posizione finale dopo il trascinamento
+    setPosition({
+      x: position.x + info.offset.x,
+      y: position.y + info.offset.y
+    });
+
+    // Resetta i valori di trascinamento
+    dragX.set(0);
+    dragY.set(0);
+  };
 
   return (
     <>
       <motion.div
-        className="fixed z-50"
+        className="fixed z-50 cursor-grab active:cursor-grabbing"
         style={{
           bottom: '50%',
           right: '50%',
@@ -58,6 +86,10 @@ export default function CashTalkButton() {
           transition: { duration: 0.5 }
         }}
         whileTap={{ scale: 0.95 }}
+        drag
+        dragMomentum={false}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
       >
         <button
           onClick={() => setIsOpen(true)}
