@@ -17,7 +17,7 @@ type AuthContextType = {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, customRedirectUrl?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -101,12 +101,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [toast]);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, customRedirectUrl?: string) => {
     setLoading(true);
     try {
-      // Configurazione per inviare email di conferma con URL assoluto
-      const redirectTo = window.location.origin + '/auth';
-      console.log('Redirect URL:', redirectTo); // Per debug
+      // Allow for a custom redirect URL, or use the default
+      const redirectTo = customRedirectUrl || (window.location.origin + '/auth');
+      console.log('Redirect URL:', redirectTo);
       
       const { error } = await supabase.auth.signUp({ 
         email, 

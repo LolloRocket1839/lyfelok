@@ -13,6 +13,7 @@ const Auth = () => {
   const [confirmEmail, setConfirmEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [customRedirectUrl, setCustomRedirectUrl] = useState('');
   const { signIn, signUp, user, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -22,7 +23,8 @@ const Auth = () => {
     email: '',
     confirmEmail: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    customRedirectUrl: ''
   });
 
   // Verificare se l'utente arriva da un link di conferma
@@ -91,7 +93,8 @@ const Auth = () => {
       email: '',
       confirmEmail: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      customRedirectUrl: ''
     };
     let isValid = true;
 
@@ -133,6 +136,12 @@ const Auth = () => {
         newErrors.confirmPassword = 'Le password non coincidono';
         isValid = false;
       }
+      
+      // Validazione URL personalizzato (se fornito)
+      if (customRedirectUrl && !customRedirectUrl.startsWith('http')) {
+        newErrors.customRedirectUrl = 'L\'URL deve iniziare con http:// o https://';
+        isValid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -149,12 +158,13 @@ const Auth = () => {
     if (isLogin) {
       await signIn(email, password);
     } else {
-      await signUp(email, password);
+      await signUp(email, password, customRedirectUrl || undefined);
       // Dopo la registrazione, mostra un toast e passa alla schermata di login
       setTimeout(() => {
         setIsLogin(true);
         setEmail('');
         setPassword('');
+        setCustomRedirectUrl('');
       }, 2000);
     }
   };
@@ -167,12 +177,14 @@ const Auth = () => {
       email: '',
       confirmEmail: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      customRedirectUrl: ''
     });
     
     if (isLogin) {
       setConfirmEmail('');
       setConfirmPassword('');
+      setCustomRedirectUrl('');
     }
   };
 
@@ -280,6 +292,29 @@ const Auth = () => {
                       <AlertCircle size={12} className="mr-1" /> {errors.confirmPassword}
                     </p>
                   )}
+                </div>
+              )}
+              
+              {/* Campo URL personalizzato (solo in registrazione) */}
+              {!isLogin && (
+                <div>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={customRedirectUrl}
+                      onChange={(e) => setCustomRedirectUrl(e.target.value)}
+                      placeholder="URL di reindirizzamento personalizzato (opzionale)"
+                      className={`w-full px-4 py-3 border ${errors.customRedirectUrl ? 'border-red-500' : 'border-slate-200'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    />
+                  </div>
+                  {errors.customRedirectUrl && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle size={12} className="mr-1" /> {errors.customRedirectUrl}
+                    </p>
+                  )}
+                  <p className="text-slate-500 text-xs mt-1">
+                    Inserisci un URL completo se desideri reindirizzare la conferma a un indirizzo specifico.
+                  </p>
                 </div>
               )}
             </div>
