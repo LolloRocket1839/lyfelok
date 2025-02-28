@@ -142,7 +142,7 @@ const Onboarding = () => {
       description: "Ti stiamo reindirizzando alla dashboard...",
     });
     
-    // Forza un ritardo per assicurarsi che il profilo sia aggiornato nel database
+    // Forza un hard refresh della pagina per assicurarsi che tutti i componenti vengano ricaricati
     setTimeout(() => {
       window.location.href = '/'; // Usa una navigazione diretta invece di react-router
     }, 1500);
