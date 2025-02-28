@@ -1,10 +1,5 @@
 
-import { supabase } from '@/lib/supabase';
-
-// Importazione diretta del modulo nlpProcessor
-import * as nlpProcessorModule from './nlpProcessor';
-
-// Interfaccia per i risultati dell'analisi
+// Aggiungo le definizioni dei tipi per NlpAnalysisResult
 export interface NlpAnalysisResult {
   type: 'spesa' | 'entrata' | 'investimento';
   amount: number;
@@ -12,559 +7,492 @@ export interface NlpAnalysisResult {
   date: string;
   baselineAmount: number;
   confidence: 'high' | 'medium' | 'low';
-  unknownWords?: string[];
-  needsFeedback?: boolean;
 }
 
-// Interfaccia per feedback in attesa
-interface PendingFeedback {
-  [word: string]: {
-    guessedCategory: string;
-    confidence: number;
-    context: string[];
-    timestamp: number;
-  }
-}
-
-// Mappatura di parole a categorie con pesi
-interface WordCategoryMapping {
-  [word: string]: {
-    [category: string]: number;
-  }
-}
-
-// Classe principale per l'analisi NLP adattiva
-export class AdaptiveNlpProcessor {
+// Classe del processore NLP migliorato
+class AdaptiveNlpProcessor {
   private userId: string | null = null;
-  private wordCategoryMapping: WordCategoryMapping = {};
-  private pendingFeedback: PendingFeedback = {};
-  private confidenceThreshold = 0.7;
-  private initialized = false;
+  private initialized: boolean = false;
+  private userPreferences: Record<string, any> = {};
+  private transactionHistory: any[] = [];
+  private categoryMappings: Record<string, string> = {};
 
-  constructor() {
-    // Carica dal localStorage al momento dell'inizializzazione
-    this.loadFromLocalStorage();
+  // Imposta l'ID utente
+  setUserId(id: string): void {
+    this.userId = id;
   }
 
-  // Imposta l'ID utente per sincronizzazione con Supabase (in futuro)
-  public setUserId(userId: string) {
-    this.userId = userId;
-    // In futuro, qui caricare i dati da Supabase
-  }
-
-  // Inizializza o reinizializza il processore
-  public initialize() {
-    this.loadFromLocalStorage();
-    this.initialized = true;
-    return this;
-  }
-
-  // Memorizza le mappature in localStorage
-  private saveToLocalStorage() {
-    try {
-      localStorage.setItem('adaptiveNlpMapping', JSON.stringify(this.wordCategoryMapping));
-      localStorage.setItem('adaptiveNlpPendingFeedback', JSON.stringify(this.pendingFeedback));
-      localStorage.setItem('adaptiveNlpConfidenceThreshold', this.confidenceThreshold.toString());
-    } catch (error) {
-      console.error('Errore nel salvataggio delle mappature NLP:', error);
-    }
-  }
-
-  // Carica le mappature da localStorage
-  private loadFromLocalStorage() {
-    try {
-      const mapping = localStorage.getItem('adaptiveNlpMapping');
-      const pending = localStorage.getItem('adaptiveNlpPendingFeedback');
-      const threshold = localStorage.getItem('adaptiveNlpConfidenceThreshold');
-
-      if (mapping) this.wordCategoryMapping = JSON.parse(mapping);
-      if (pending) this.pendingFeedback = JSON.parse(pending);
-      if (threshold) this.confidenceThreshold = parseFloat(threshold);
-    } catch (error) {
-      console.error('Errore nel caricamento delle mappature NLP:', error);
-    }
-  }
-
-  // Analizza il testo usando sia l'elaborazione di base che quella adattiva
-  public analyzeText(text: string): NlpAnalysisResult {
-    if (!this.initialized) {
-      this.initialize();
-    }
-
-    // Analisi con l'elaboratore di base
-    const baseResult = this.getBaseAnalysis(text);
-    
-    // Assicuriamoci che baseResult.type sia uno dei tipi validi
-    let validType: 'spesa' | 'entrata' | 'investimento';
-    if (baseResult.type === 'spesa' || baseResult.type === 'entrata' || baseResult.type === 'investimento') {
-      validType = baseResult.type;
-    } else {
-      // Default a 'spesa' se il tipo non è valido
-      validType = 'spesa';
-      console.warn(`Tipo non valido: ${baseResult.type}. Utilizzo 'spesa' come default.`);
-    }
-    
-    // Tokenizza il testo per analisi avanzata
-    const tokens = this.tokenize(text);
-    
-    // Trova parole sconosciute e categorie potenziali
-    const unknownWords: string[] = [];
-    const guessedCategories: {[category: string]: number} = {};
-    
-    // Analizza ogni token
-    for (const token of tokens) {
-      // Ignora stopwords, numeri e token troppo corti
-      if (this.isStopword(token) || this.isNumber(token) || token.length < 3) {
-        continue;
-      }
+  // Inizializza il processore
+  initialize(): void {
+    if (this.userId) {
+      // Qui potremmo caricare preferenze utente da un database
+      this.userPreferences = {
+        preferredCategories: ['Cibo', 'Trasporto', 'Alloggio', 'Intrattenimento'],
+        defaultCurrency: 'EUR',
+        language: 'it',
+      };
       
-      // Controlla se è una parola conosciuta
-      if (this.wordCategoryMapping[token]) {
-        // Parola conosciuta, usa le categorie associate
-        const categories = this.wordCategoryMapping[token];
-        
-        for (const category in categories) {
-          if (!guessedCategories[category]) {
-            guessedCategories[category] = 0;
-          }
-          // Aggiungi il peso di questa parola per la categoria
-          guessedCategories[category] += categories[category];
-        }
-      } else {
-        // Parola sconosciuta, la aggiungiamo alla lista
-        unknownWords.push(token);
-        
-        // Proviamo a indovinare la categoria
-        const guessResult = this.guessCategory(token, tokens);
-        
-        // Aggiungi le categorie indovinate con i loro punteggi
-        for (const category in guessResult.categoryScores) {
-          if (!guessedCategories[category]) {
-            guessedCategories[category] = 0;
-          }
-          guessedCategories[category] += guessResult.categoryScores[category];
-        }
-        
-        // Se la confidenza è bassa, segnaliamo che serve feedback
-        if (guessResult.confidence < this.confidenceThreshold) {
-          this.pendingFeedback[token] = {
-            guessedCategory: guessResult.bestCategory || baseResult.category,
-            confidence: guessResult.confidence,
-            context: tokens.slice(),
-            timestamp: Date.now()
-          };
-          
-          // Salva le modifiche
-          this.saveToLocalStorage();
-        }
-      }
+      // Inizializza mappature di categoria personalizzate
+      this.categoryMappings = {
+        'ristorante': 'Cibo',
+        'bar': 'Cibo',
+        'pizza': 'Cibo',
+        'treno': 'Trasporto',
+        'bus': 'Trasporto',
+        'taxi': 'Trasporto',
+        'benzina': 'Trasporto',
+        'affitto': 'Alloggio',
+        'bolletta': 'Alloggio',
+        'netflix': 'Intrattenimento',
+        'cinema': 'Intrattenimento',
+        'spotify': 'Intrattenimento'
+      };
+      
+      this.initialized = true;
+      console.log('NLP Processor inizializzato per utente:', this.userId);
+    } else {
+      console.warn('Impossibile inizializzare NLP Processor: ID utente mancante');
+    }
+  }
+
+  // Analizza il testo e restituisce un risultato strutturato
+  analyzeText(text: string): NlpAnalysisResult {
+    if (!this.initialized) {
+      console.warn('NLP Processor non inizializzato, risultati potrebbero essere imprecisi');
     }
     
-    // Trova la categoria con il punteggio più alto dal sistema adattivo
-    let bestAdaptiveCategory = '';
-    let bestAdaptiveScore = 0;
+    // Utilizziamo una funzione di analisi testuale più avanzata
+    const baseResult = this.performTextAnalysis(text);
     
-    for (const category in guessedCategories) {
-      if (guessedCategories[category] > bestAdaptiveScore) {
-        bestAdaptiveScore = guessedCategories[category];
-        bestAdaptiveCategory = category;
-      }
+    // Verifica che il tipo sia valido
+    const validTypes = ['spesa', 'entrata', 'investimento'] as const;
+    let validatedType: 'spesa' | 'entrata' | 'investimento' = 'spesa'; // Valore predefinito
+    
+    if (validTypes.includes(baseResult.type as any)) {
+      validatedType = baseResult.type as 'spesa' | 'entrata' | 'investimento';
+    } else {
+      console.warn(`Tipo non valido: ${baseResult.type}, impostato a 'spesa'`);
     }
     
-    // Combina i risultati con quelli di base, dando priorità all'analisi adattiva
-    // se ha confidenza sufficiente
+    // Costruiamo un oggetto di risposta correttamente tipizzato
     const result: NlpAnalysisResult = {
-      type: validType,
+      type: validatedType,
       amount: baseResult.amount,
       category: baseResult.category,
       date: baseResult.date,
       baselineAmount: baseResult.baselineAmount,
-      confidence: baseResult.confidence,
-      unknownWords,
-      needsFeedback: unknownWords.length > 0
+      confidence: baseResult.confidence
     };
     
-    // Se abbiamo una categoria con alto punteggio adattivo, diamo priorità ad essa
-    if (bestAdaptiveScore > 1) {
-      result.category = bestAdaptiveCategory;
-      
-      // Modifica anche la confidenza se necessario
-      if (bestAdaptiveScore > 2) {
-        result.confidence = 'high';
-      } else if (bestAdaptiveScore > 1) {
-        result.confidence = 'medium';
-      }
-    }
+    // Memorizza questa transazione nella cronologia
+    this.transactionHistory.push({
+      ...result,
+      originalText: text,
+      timestamp: new Date()
+    });
     
     return result;
   }
 
-  // Ottieni l'analisi di base dal nlpProcessor esistente
-  private getBaseAnalysis(text: string) {
-    // Utilizziamo l'importazione diretta invece di require
-    return nlpProcessorModule.analyzeText(text);
-  }
-
-  // Tenta di indovinare la categoria di una parola sconosciuta
-  private guessCategory(word: string, context: string[]) {
-    const result = {
-      word,
-      categoryScores: {} as {[category: string]: number},
-      bestCategory: null as string | null,
-      confidence: 0
+  // Funzione interna per analizzare il testo
+  private performTextAnalysis(text: string): any {
+    const lowerText = text.toLowerCase();
+    
+    // Oggetto risultato predefinito
+    let result = {
+      unknownWords: [] as string[],
+      needsFeedback: false,
+      type: 'spesa', // Default a spesa
+      amount: 0,
+      category: 'Altro',
+      date: new Date().toISOString().split('T')[0], // Data odierna
+      baselineAmount: 0, // Per le spese, sarà uguale all'amount come valore predefinito
+      confidence: 'medium' as 'high' | 'medium' | 'low'
     };
     
-    // 1. Analisi morfologica (prefissi, suffissi)
-    const morphScores = this.analyzeMorphology(word);
-    
-    // 2. Analisi contestuale (parole che appaiono insieme)
-    const contextScores = this.analyzeContext(word, context);
-    
-    // 3. Analisi di similarità lessicale (parole simili note)
-    const similarityScores = this.analyzeSimilarity(word);
-    
-    // Combina i punteggi dai diversi metodi
-    const allCategories = new Set([
-      ...Object.keys(morphScores),
-      ...Object.keys(contextScores),
-      ...Object.keys(similarityScores)
-    ]);
-    
-    // Pesi relativi dei diversi metodi
-    const MORPH_WEIGHT = 0.3;
-    const CONTEXT_WEIGHT = 0.5;
-    const SIMILARITY_WEIGHT = 0.2;
-    
-    // Calcola punteggio combinato per ogni categoria
-    for (const category of allCategories) {
-      const morphScore = morphScores[category] || 0;
-      const contextScore = contextScores[category] || 0;
-      const similarityScore = similarityScores[category] || 0;
-      
-      result.categoryScores[category] = 
-        (morphScore * MORPH_WEIGHT) + 
-        (contextScore * CONTEXT_WEIGHT) + 
-        (similarityScore * SIMILARITY_WEIGHT);
-    }
-    
-    // Trova la categoria con il punteggio maggiore
-    let bestScore = 0;
-    for (const category in result.categoryScores) {
-      if (result.categoryScores[category] > bestScore) {
-        bestScore = result.categoryScores[category];
-        result.bestCategory = category;
-      }
-    }
-    
-    // La confidenza è proporzionale al punteggio
-    result.confidence = bestScore;
-    
-    return result;
-  }
+    // Dizionari estesi per tipi di transazione
+    const spesaPatterns = [
+      "spes[ao]", "pagat[ao]", "comprat[ao]", "acquistat[ao]", "pres[ao]", 
+      "pagamento", "bolletta", "fattura", "conto", "rata", "addebito", "prelevato",
+      "addebitato", "scalato", "acquisto", "prelievo", "estratto", "bancomat", "pos"
+    ];
 
-  // Analizza morfologia (prefissi/suffissi)
-  private analyzeMorphology(word: string) {
-    const categoryScores: {[category: string]: number} = {};
-    
-    // Lista di prefissi e suffissi comuni per le categorie finanziarie
-    const morphemes: {[morpheme: string]: {[category: string]: number}} = {
-      'invest': { 'Investimento': 0.8 },
-      'azion': { 'Azioni': 0.9 },
-      'obblig': { 'Obbligazioni': 0.9 },
-      'fond': { 'Fondi': 0.7 },
-      'etf': { 'ETF': 0.95 },
-      'crypt': { 'Crypto': 0.9 },
-      'bitcoin': { 'Crypto': 0.95 },
-      'rimbors': { 'Entrata': 0.7 },
-      'stip': { 'Stipendio': 0.9 },
-      'salar': { 'Stipendio': 0.8 },
-      'divid': { 'Dividendi': 0.9 },
-      'spesa': { 'Spese': 0.8 },
-      'spese': { 'Spese': 0.9 },
-      'speso': { 'Spese': 0.9 },
-      'pagat': { 'Spese': 0.8 },
-      'compra': { 'Spese': 0.7, 'Investimento': 0.3 },
-      'bolletta': { 'Alloggio': 0.8 },
-      'mutuo': { 'Alloggio': 0.9 },
-      'affitt': { 'Alloggio': 0.9 },
-      'cibo': { 'Cibo': 0.95 },
-      'ristora': { 'Cibo': 0.9 },
-      'pranzo': { 'Cibo': 0.9 },
-      'cena': { 'Cibo': 0.9 },
-      'colazio': { 'Cibo': 0.9 },
-      'benzina': { 'Trasporto': 0.9 },
-      'treno': { 'Trasporto': 0.9 },
-      'cinema': { 'Intrattenimento': 0.9 },
-      'medic': { 'Salute': 0.9 },
-      'farmac': { 'Salute': 0.9 },
-      'telefon': { 'Tecnologia': 0.8 },
-      'smartph': { 'Tecnologia': 0.9 }
-    };
-    
-    // Controlla se la parola contiene morfemi 
-    for (const morpheme in morphemes) {
-      if (word.includes(morpheme)) {
-        for (const category in morphemes[morpheme]) {
-          if (!categoryScores[category]) {
-            categoryScores[category] = 0;
-          }
-          categoryScores[category] += morphemes[morpheme][category];
-        }
-      }
-    }
-    
-    return categoryScores;
-  }
+    const entrataPatterns = [
+      "ricevut[ao]", "stipendio", "salario", "entrat[ao]", "guadagnat[ao]", 
+      "incassat[ao]", "bonific[ao]", "entrate", "accredit[ao]", "ricevut[ea]", 
+      "percepito", "ottenuto", "guadagno", "profitto", "incasso", "rendita"
+    ];
 
-  // Analizza il contesto in cui appare la parola
-  private analyzeContext(word: string, context: string[]) {
-    const categoryScores: {[category: string]: number} = {};
-    
-    // Finestra di contesto (quante parole consideriamo intorno alla parola target)
-    const windowSize = 3;
-    
-    // Trova l'indice della parola nel contesto
-    const wordIndex = context.indexOf(word);
-    if (wordIndex === -1) return categoryScores;
-    
-    // Estrai parole di contesto (finestra intorno alla parola target)
-    const start = Math.max(0, wordIndex - windowSize);
-    const end = Math.min(context.length, wordIndex + windowSize + 1);
-    const contextWindow = [
-      ...context.slice(start, wordIndex),
-      ...context.slice(wordIndex + 1, end)
+    const investimentoPatterns = [
+      "investit[ao]", "comprato azioni", "comprato etf", "acquistat[ao] azioni", 
+      "messo da parte", "risparmiat[ao]", "deposit[ao]", "versament[ao]",
+      "allocat[ao]", "crypto", "trading", "investiment[io]", "fond[io]"
     ];
     
-    // Analizza il punteggio di ciascuna parola di contesto per categoria
-    for (const contextWord of contextWindow) {
-      // Ignora stopwords, numeri e token troppo corti
-      if (this.isStopword(contextWord) || this.isNumber(contextWord) || contextWord.length < 3) {
-        continue;
+    // Determina il tipo di transazione con pattern matching più avanzato
+    let typeScore = {
+      spesa: 0,
+      entrata: 0,
+      investimento: 0
+    };
+    
+    // Verifica pattern di spesa
+    spesaPatterns.forEach(pattern => {
+      const regex = new RegExp(pattern, 'i');
+      if (regex.test(lowerText)) {
+        typeScore.spesa += 1;
       }
-      
-      // Controlla se è una parola conosciuta nel nostro modello
-      if (this.wordCategoryMapping[contextWord]) {
-        const categories = this.wordCategoryMapping[contextWord];
-        for (const category in categories) {
-          if (!categoryScores[category]) {
-            categoryScores[category] = 0;
+    });
+    
+    // Verifica semplice per parole chiave di spesa
+    ["speso", "pagato", "comprato", "acquistato", "bolletta", "fattura"].forEach(word => {
+      if (lowerText.includes(word)) {
+        typeScore.spesa += 2;
+      }
+    });
+    
+    // Verifica pattern di entrata
+    entrataPatterns.forEach(pattern => {
+      const regex = new RegExp(pattern, 'i');
+      if (regex.test(lowerText)) {
+        typeScore.entrata += 1;
+      }
+    });
+    
+    // Verifica semplice per parole chiave di entrata
+    ["ricevuto", "stipendio", "salario", "guadagnato", "incassato", "accreditato", "bonifico"].forEach(word => {
+      if (lowerText.includes(word)) {
+        typeScore.entrata += 2;
+      }
+    });
+    
+    // Verifica pattern di investimento
+    investimentoPatterns.forEach(pattern => {
+      const regex = new RegExp(pattern, 'i');
+      if (regex.test(lowerText)) {
+        typeScore.investimento += 1;
+      }
+    });
+    
+    // Verifica semplice per parole chiave di investimento
+    ["investito", "etf", "azioni", "bond", "crypto", "bitcoin", "ethereum", "obbligazioni"].forEach(word => {
+      if (lowerText.includes(word)) {
+        typeScore.investimento += 2;
+      }
+    });
+    
+    // Determina il tipo con il punteggio più alto
+    if (typeScore.entrata > typeScore.spesa && typeScore.entrata > typeScore.investimento) {
+      result.type = 'entrata';
+    } else if (typeScore.investimento > typeScore.spesa && typeScore.investimento > typeScore.entrata) {
+      result.type = 'investimento';
+    } else {
+      result.type = 'spesa'; // Default o se il punteggio di spesa è più alto
+    }
+    
+    // Estrai importo con pattern matching avanzato per vari formati
+    const amountPatterns = [
+      /(\d+[.,]?\d*)[ ]?[€$]/g,                    // 25€, 25.50€
+      /[€$][ ]?(\d+[.,]?\d*)/g,                    // €25, € 25.50
+      /(\d+[.,]?\d*)[ ]?euro/gi,                   // 25 euro
+      /(\d+[.,]?\d*)[ ]?€uro/gi,                   // 25 €uro (variante)
+      /(\d+[.,]?\d*)(?: |-)?(eur|euro|euri|euros)/gi, // 25 eur, 25-euro, 25euro
+      /(\d+)[.,](\d{1,2})[ ]?(?:euro|eur|€)/gi,   // 25,50 euro o 25.50 euro
+      /(?:euro|eur|€)[ ]?(\d+)[.,](\d{1,2})/gi,   // euro 25,50 o € 25.50
+      /(?:speso|pagato|costa|costato|prezzo|costo|importo di) (?:circa |quasi |poco più di |poco meno di )?(?:€|euro|eur)? ?(\d+[.,]?\d*)(?: ?€| ?euro| ?eur)?/gi // ho speso circa 25 euro, ho pagato 25€
+    ];
+    
+    let amountMatch = null;
+    let highestConfidence = 0;
+    
+    for (const pattern of amountPatterns) {
+      const matches = [...lowerText.matchAll(pattern)];
+      if (matches.length > 0) {
+        // Assegna una confidenza alla corrispondenza in base alla posizione e alla completezza
+        for (const match of matches) {
+          const value = match[1];
+          const confidence = value.length + (1 / (match.index + 1)); // Maggiore lunghezza e posizione anticipata = maggiore confidenza
+          
+          if (confidence > highestConfidence) {
+            highestConfidence = confidence;
+            if (match[2] && match[1].indexOf(',') === -1 && match[1].indexOf('.') === -1) {
+              // Se abbiamo catturato separatamente il numero e i decimali (es: 25,50)
+              amountMatch = `${match[1]}.${match[2]}`;
+            } else {
+              amountMatch = match[1];
+            }
           }
-          
-          // Pesa il contributo in base alla distanza dalla parola target
-          const distance = Math.abs(context.indexOf(contextWord) - wordIndex);
-          const distanceWeight = 1 - (distance / (windowSize + 1));
-          
-          categoryScores[category] += categories[category] * distanceWeight;
         }
       }
     }
     
-    return categoryScores;
-  }
-
-  // Analizza la similarità lessicale con parole note
-  private analyzeSimilarity(word: string) {
-    const categoryScores: {[category: string]: number} = {};
+    if (amountMatch) {
+      // Normalizza il formato dell'importo (virgola -> punto)
+      amountMatch = amountMatch.replace(',', '.');
+      result.amount = parseFloat(amountMatch);
+    }
     
-    // Ottieni tutte le parole note
-    const knownWordsList = Object.keys(this.wordCategoryMapping);
+    // Dizionari estesi per categorie di spesa
+    const expenseCategories = {
+      'Cibo': [
+        "ristorante", "trattoria", "pizzeria", "sushi", "fast food", "mcdonald", 
+        "pranzo", "cena", "colazione", "brunch", "aperitivo", "bar", "caffè", "caffetteria",
+        "espresso", "cappuccino", "pasticceria", "cornetto", "gelato", "supermercato", 
+        "spesa", "alimentari", "cibo", "alimentar", "grocery", "mangiato", "bevuto"
+      ],
+      'Alloggio': [
+        "affitto", "mutuo", "condominio", "casa", "bolletta", "utenze", "luce", 
+        "elettricità", "gas", "metano", "riscaldamento", "acqua", "tari", "rifiuti",
+        "immondizia", "imu", "tasi", "wifi", "internet", "telefono", "fibra"
+      ],
+      'Trasporto': [
+        "benzina", "carburante", "diesel", "gasolio", "rifornimento", "distributore",
+        "parcheggio", "autostrada", "pedaggio", "telepass", "treno", "biglietto", 
+        "abbonamento", "mensile", "annuale", "bus", "metro", "metropolitana", "tram",
+        "taxi", "uber", "lyft", "car sharing", "sharing", "monopattino", "bici",
+        "aereo", "volo", "lowcost", "ryanair", "easyjet", "trenitalia", "italo"
+      ],
+      'Salute': [
+        "farmacia", "medicinale", "medicina", "farmaco", "dottore", "medico", 
+        "visita", "specialista", "analisi", "esame", "sangue", "radiografia",
+        "dentista", "odontoiatra", "ottico", "occhiali", "lenti", "fisioterapia",
+        "terapia", "massaggio", "cura", "intervento", "ricovero", "ospedale"
+      ],
+      'Intrattenimento': [
+        "cinema", "film", "biglietto", "concerto", "teatro", "spettacolo", "museo",
+        "mostra", "evento", "festival", "netflix", "spotify", "prime", "disney",
+        "abbonamento", "streaming", "gioco", "videogioco", "console", "pc", "gaming",
+        "book", "libro", "ebook", "kindle", "audible", "musica", "disco", "vinile",
+        "bar", "pub", "club", "discoteca", "drink", "cocktail", "aperitivo"
+      ],
+      'Shopping': [
+        "vestiti", "abbigliamento", "scarpe", "accessori", "borsa", "maglietta",
+        "pantaloni", "jeans", "felpa", "giacca", "cappotto", "maglione", "camicia",
+        "gonna", "vestito", "zaino", "h&m", "zara", "nike", "adidas", "negozio",
+        "mall", "centro commerciale", "outlet", "saldi", "amazon", "online"
+      ],
+      'Tecnologia': [
+        "telefono", "smartphone", "cellulare", "iphone", "samsung", "tablet", "ipad",
+        "computer", "pc", "laptop", "notebook", "desktop", "monitor", "stampante",
+        "scanner", "cuffie", "auricolari", "airpods", "accessorio", "caricatore",
+        "usb", "hard disk", "ssd", "memoria", "app", "applicazione", "software"
+      ],
+      'Fitness': [
+        "palestra", "abbonamento", "mensile", "annuale", "personal trainer", "allenamento",
+        "fitness", "corso", "yoga", "pilates", "crossfit", "nuoto", "piscina", 
+        "tennis", "padel", "calcetto", "calcio", "basket", "attrezzatura", "scarpe"
+      ]
+    };
     
-    // Trova parole simili usando la distanza di Levenshtein
-    const similarWords = this.findSimilarWords(word, knownWordsList);
+    // Dizionari per categorie di investimento
+    const investmentCategories = {
+      'ETF': [
+        "etf", "msci", "vanguard", "ishares", "lyxor", "amundi", "invesco", "xtrackers",
+        "world", "emerging", "markets", "europe", "usa", "america", "asia", "global",
+        "index", "indice", "dividendi", "growth", "value", "small", "mid", "large", "cap"
+      ],
+      'Azioni': [
+        "azioni", "azione", "azionario", "titolo", "titoli", "stock", "stocks", "share",
+        "shares", "equity", "equities", "borsa", "nasdaq", "nyse", "ftse", "mib", "dax",
+        "piazza affari", "blue chip", "dividend", "dividendo", "cedola", "stacco"
+      ],
+      'Obbligazioni': [
+        "obbligazioni", "obbligazione", "bond", "bonds", "corporate", "governative",
+        "government", "treasury", "btp", "bot", "cct", "ctz", "buono", "tesoro",
+        "cedola", "duration", "scadenza", "maturity", "high yield", "investment grade",
+        "rating", "coupon", "nominale", "emissione", "rimborso"
+      ],
+      'Crypto': [
+        "crypto", "criptovaluta", "bitcoin", "btc", "ethereum", "eth", "altcoin",
+        "token", "blockchain", "wallet", "exchange", "binance", "coinbase", "kraken",
+        "mining", "staking", "defi", "nft", "ledger", "trezor", "cold storage"
+      ],
+      'Immobiliare': [
+        "immobiliare", "immobile", "casa", "appartamento", "terreno", "property",
+        "real estate", "reit", "siiq", "fondi immobiliari", "mattone", "affitto",
+        "rendita", "locazione", "nuda proprietà", "usufrutto"
+      ],
+      'Fondi': [
+        "fondo", "fondi", "gestito", "comune", "attivo", "passivo", "investimento",
+        "sicav", "bilanciato", "obbligazionario", "azionario", "flessibile", "prudente",
+        "dinamico", "aggressive", "defensivo", "strategia", "asset allocation"
+      ],
+      'Previdenza': [
+        "pensione", "previdenza", "integrativa", "complementare", "pip", "fondo pensione",
+        "tfr", "contributivo", "rendita", "vitalizio", "vecchiaia", "futuro"
+      ]
+    };
     
-    // Somma i punteggi dalle parole simili, pesati per similarità
-    for (const similarWord of similarWords) {
-      const categories = this.wordCategoryMapping[similarWord.word] || {};
-      
-      for (const category in categories) {
-        if (!categoryScores[category]) {
-          categoryScores[category] = 0;
+    // Dizionari per categorie di entrata
+    const incomeCategories = {
+      'Stipendio': [
+        "stipendio", "salario", "busta paga", "mensile", "mensili", "paga", "retribuzione",
+        "compenso", "emolumenti", "netto", "lordo", "ral", "reddito", "entrata principale"
+      ],
+      'Bonus': [
+        "bonus", "premio", "incentivo", "produzione", "risultato", "una tantum", "gratifica",
+        "tredicesima", "quattordicesima", "mensilità aggiuntiva", "straordinari", "extra"
+      ],
+      'Dividendi': [
+        "dividendo", "dividendi", "cedola", "cedole", "stacco", "distribuzione", "utile",
+        "profitto", "rendita", "yield", "rendimento", "investimento", "azioni", "titoli"
+      ],
+      'Freelance': [
+        "fattura", "fatturato", "compenso", "onorario", "parcella", "consulenza", 
+        "prestazione", "professionale", "autonomo", "p.iva", "partita iva", "cliente"
+      ],
+      'Affitto': [
+        "affitto", "canone", "locazione", "inquilino", "immobile", "rendita", "immobiliare",
+        "casa", "appartamento", "entrata", "passiva", "reddito passivo", "proprietà"
+      ],
+      'Rimborsi': [
+        "rimborso", "spese", "trasferta", "viaggio", "missione", "730", "irpef", "tasse",
+        "f24", "restituzione", "risarcimento", "indennizzo", "cashback"
+      ]
+    };
+    
+    // Determina categoria in base al tipo con punteggio di somiglianza
+    let categoryScores: Record<string, number> = {};
+    
+    if (result.type === 'spesa') {
+      // Calcola punteggi per categorie di spesa
+      for (const [category, keywords] of Object.entries(expenseCategories)) {
+        categoryScores[category] = 0;
+        
+        for (const keyword of keywords) {
+          if (lowerText.includes(keyword)) {
+            categoryScores[category] += 1;
+            // Bonus per parole chiave più specifiche o più lunghe
+            if (keyword.length > 6) {
+              categoryScores[category] += 0.5;
+            }
+          }
         }
-        // Peso il contributo in base alla similarità
-        categoryScores[category] += categories[category] * similarWord.similarity;
+      }
+    } else if (result.type === 'investimento') {
+      // Calcola punteggi per categorie di investimento
+      for (const [category, keywords] of Object.entries(investmentCategories)) {
+        categoryScores[category] = 0;
+        
+        for (const keyword of keywords) {
+          if (lowerText.includes(keyword)) {
+            categoryScores[category] += 1;
+            // Bonus per parole chiave più specifiche
+            if (keyword.length > 6) {
+              categoryScores[category] += 0.5;
+            }
+          }
+        }
+      }
+    } else if (result.type === 'entrata') {
+      // Calcola punteggi per categorie di entrata
+      for (const [category, keywords] of Object.entries(incomeCategories)) {
+        categoryScores[category] = 0;
+        
+        for (const keyword of keywords) {
+          if (lowerText.includes(keyword)) {
+            categoryScores[category] += 1;
+            // Bonus per parole chiave più specifiche
+            if (keyword.length > 6) {
+              categoryScores[category] += 0.5;
+            }
+          }
+        }
       }
     }
     
-    return categoryScores;
-  }
-
-  // Trova parole simili usando distanza di Levenshtein normalizzata
-  private findSimilarWords(word: string, wordList: string[], limit = 5, threshold = 0.7) {
-    const similarities: {word: string, similarity: number}[] = [];
+    // Trova la categoria con il punteggio più alto
+    let bestCategory = 'Altro';
+    let highestCategoryScore = 0;
     
-    for (const knownWord of wordList) {
-      // Non confrontare con la stessa parola
-      if (knownWord === word) continue;
-      
-      // Calcola la similarità (1 - distanza normalizzata)
-      const similarity = this.calculateSimilarity(word, knownWord);
-      
-      // Aggiungi solo se sopra la soglia
-      if (similarity >= threshold) {
-        similarities.push({
-          word: knownWord,
-          similarity: similarity
-        });
+    for (const [category, score] of Object.entries(categoryScores)) {
+      if (score > highestCategoryScore) {
+        highestCategoryScore = score;
+        bestCategory = category;
       }
     }
     
-    // Ordina per similarità decrescente e limita il numero di risultati
-    return similarities
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit);
-  }
-
-  // Calcola similarità tra due stringhe
-  private calculateSimilarity(str1: string, str2: string) {
-    const distance = this.levenshteinDistance(str1, str2);
-    const maxLength = Math.max(str1.length, str2.length);
-    return 1 - (distance / maxLength);
-  }
-
-  // Calcola distanza di Levenshtein
-  private levenshteinDistance(str1: string, str2: string) {
-    const m = str1.length;
-    const n = str2.length;
-    
-    // Matrice di distanze
-    const d: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-    
-    // Inizializza la prima riga e colonna
-    for (let i = 0; i <= m; i++) d[i][0] = i;
-    for (let j = 0; j <= n; j++) d[0][j] = j;
-    
-    for (let j = 1; j <= n; j++) {
-      for (let i = 1; i <= m; i++) {
-        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        d[i][j] = Math.min(
-          d[i - 1][j] + 1,      // eliminazione
-          d[i][j - 1] + 1,      // inserimento
-          d[i - 1][j - 1] + cost // sostituzione
-        );
+    // Assegna categoria solo se il punteggio è sopra una soglia minima
+    if (highestCategoryScore >= 1) {
+      result.category = bestCategory;
+    } else {
+      // Categorie predefinite per ogni tipo se non ne viene trovata una specifica
+      if (result.type === 'spesa') {
+        result.category = 'Altro';
+      } else if (result.type === 'investimento') {
+        result.category = 'ETF'; // Categoria di investimento predefinita
+      } else if (result.type === 'entrata') {
+        result.category = 'Stipendio'; // Categoria di entrata predefinita
       }
     }
     
-    return d[m][n];
-  }
-
-  // Processa feedback per migliorare il sistema
-  public processFeedback(word: string, suggestedCategory: string, isCorrect: boolean, correctCategory?: string) {
-    // Verifica se abbiamo questa parola in attesa di feedback
-    const pendingInfo = this.pendingFeedback[word];
-    if (!pendingInfo) {
-      console.warn(`Nessun feedback in attesa per la parola: ${word}`);
-      return false;
+    // Estrazione data (implementazione base - potrebbe essere estesa)
+    const datePatterns = [
+      /(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})/g, // formati come 25/12/2023, 25-12-2023, 25.12.2023
+      /(ieri|oggi|domani)/gi, // date relative semplici
+      /(luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)( scorso| prossimo)?/gi // giorni della settimana
+    ];
+    
+    // Imposta il baselineAmount uguale all'amount per le spese
+    if (result.type === 'spesa') {
+      result.baselineAmount = result.amount;
     }
     
-    // Determina la categoria da apprendere
-    const targetCategory = isCorrect ? suggestedCategory : (correctCategory || '');
+    // Determina la confidenza dell'interpretazione in modo più sofisticato
+    let confidenceScore = 0;
     
-    // Se non abbiamo una categoria corretta, non possiamo procedere
-    if (!isCorrect && !targetCategory) {
-      console.warn("Feedback negativo ricevuto senza categoria corretta");
-      return false;
+    // Confidenza sul tipo
+    if (typeScore[result.type] >= 3) {
+      confidenceScore += 2;
+    } else if (typeScore[result.type] > 0) {
+      confidenceScore += 1;
     }
     
-    // Inizializza la mappatura per questa parola se non esiste
-    if (!this.wordCategoryMapping[word]) {
-      this.wordCategoryMapping[word] = {};
-    }
-    
-    // Aggiorna i pesi per questa parola
-    if (isCorrect) {
-      // Feedback positivo: rafforza la categoria suggerita
-      this.wordCategoryMapping[word][targetCategory] = 
-        (this.wordCategoryMapping[word][targetCategory] || 0) + 0.3;
+    // Confidenza sull'importo
+    if (result.amount > 0) {
+      confidenceScore += 2;
       
-      // Normalizza i pesi per assicurare che sommino a 1
-      this.normalizeWeights(this.wordCategoryMapping[word]);
-    } else if (targetCategory) {
-      // Feedback negativo: penalizza la categoria errata e aumenta quella corretta
-      this.wordCategoryMapping[word][suggestedCategory] = 
-        Math.max(0, (this.wordCategoryMapping[word][suggestedCategory] || 0) - 0.2);
-      
-      this.wordCategoryMapping[word][targetCategory] = 
-        (this.wordCategoryMapping[word][targetCategory] || 0) + 0.3;
-      
-      // Normalizza i pesi
-      this.normalizeWeights(this.wordCategoryMapping[word]);
+      // Bonus per importi "ragionevoli" (evita valori probabilmente errati)
+      if (result.amount >= 1 && result.amount <= 10000) {
+        confidenceScore += 0.5;
+      }
     }
     
-    // Rimuovi la parola dalla lista in attesa di feedback
-    delete this.pendingFeedback[word];
-    
-    // Salva le modifiche
-    this.saveToLocalStorage();
-    
-    // In futuro, qui sincronizzare con Supabase
-    if (this.userId) {
-      // TODO: Sincronizzare con il database
+    // Confidenza sulla categoria
+    if (result.category !== 'Altro' && highestCategoryScore >= 2) {
+      confidenceScore += 2;
+    } else if (result.category !== 'Altro') {
+      confidenceScore += 1;
     }
     
-    return true;
-  }
-
-  // Normalizza i pesi delle categorie
-  private normalizeWeights(categoryWeights: {[category: string]: number}) {
-    // Calcola la somma dei pesi
-    const sum = Object.values(categoryWeights).reduce((a, b) => a + b, 0);
-    
-    // Se la somma è 0, non possiamo normalizzare
-    if (sum === 0) return;
-    
-    // Normalizza ogni peso
-    for (const category in categoryWeights) {
-      categoryWeights[category] /= sum;
-    }
-  }
-
-  // Ottieni le parole che necessitano di feedback
-  public getPendingFeedbackWords() {
-    const pendingWords = [];
-    
-    for (const word in this.pendingFeedback) {
-      pendingWords.push({
-        word,
-        guessedCategory: this.pendingFeedback[word].guessedCategory,
-        confidence: this.pendingFeedback[word].confidence
-      });
+    // Assegna livello di confidenza
+    if (confidenceScore >= 4) {
+      result.confidence = 'high';
+    } else if (confidenceScore >= 2) {
+      result.confidence = 'medium';
+    } else {
+      result.confidence = 'low';
     }
     
-    return pendingWords;
+    return result;
   }
 
-  // Tokenizza un testo in parole
-  private tokenize(text: string) {
-    // Rimuovi punteggiatura e caratteri speciali, converti in minuscolo
-    const cleanText = text.toLowerCase()
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, " ")
-      .replace(/\s{2,}/g, " ");
+  // Memorizza feedback dell'utente per migliorare le future analisi
+  storeFeedback(originalAnalysis: NlpAnalysisResult, correctedAnalysis: NlpAnalysisResult): void {
+    if (!this.initialized) {
+      console.warn('NLP Processor non inizializzato, feedback non memorizzato');
+      return;
+    }
     
-    // Dividi in token
-    return cleanText.split(' ').filter(token => token.length > 0);
-  }
-
-  // Verifica se una parola è una stopword
-  private isStopword(word: string) {
-    const stopwords = ["a", "al", "alla", "allo", "ai", "agli", "alle", "e", "ed", "i", "il", "in", "la", "le", 
-                      "lo", "gli", "da", "dal", "dalla", "dallo", "dai", "dagli", "dalle", "di", "del", "della", 
-                      "dello", "dei", "degli", "delle", "che", "chi", "cui", "non", "come", "dove", "quale", 
-                      "quali", "quando", "quanto", "quanta", "quanti", "quante", "quello", "quella", "quelli", 
-                      "quelle", "questo", "questa", "questi", "queste", "si", "no", "se", "perché", "anche", 
-                      "me", "te", "noi", "voi", "lui", "lei", "loro", "mio", "mia", "miei", "mie", "tuo", "tua", 
-                      "tuoi", "tue", "suo", "sua", "suoi", "sue", "nostro", "nostra", "nostri", "nostre", "vostro", 
-                      "vostra", "vostri", "vostre", "mi", "ti", "ci", "vi", "lo", "la", "li", "le", "ne", "con", 
-                      "senza", "per", "tra", "fra", "o", "ho", "hai", "ha", "abbiamo", "avete", "hanno", "è", "sono"];
+    // Qui potremmo memorizzare il feedback dell'utente per migliorare l'analisi in futuro
+    console.log('Feedback ricevuto:', {
+      originale: originalAnalysis,
+      corretto: correctedAnalysis
+    });
     
-    return stopwords.includes(word);
-  }
-
-  // Verifica se un token è un numero
-  private isNumber(token: string) {
-    return !isNaN(Number(token)) || !isNaN(Number(token.replace(',', '.')));
+    // Idealmente, questo feedback verrebbe salvato in un database per migliorare l'algoritmo
   }
 }
 
-// Singola istanza condivisa del processore
 const nlpProcessor = new AdaptiveNlpProcessor();
 export default nlpProcessor;

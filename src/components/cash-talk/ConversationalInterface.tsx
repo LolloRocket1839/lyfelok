@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUp, X, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowUp, X, MessageSquare, ChevronDown, ChevronUp, HelpCircle, Share2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,7 +29,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   const [conversationHistory, setConversationHistory] = useState<ConversationItem[]>([
     {
       type: 'suggestion',
-      text: 'Sono il tuo assistente finanziario. Chiedimi qualsiasi cosa sulle tue finanze o registra transazioni in linguaggio naturale.',
+      text: 'Sono il tuo assistente finanziario principale. Chiedimi qualsiasi cosa sulle tue finanze o registra transazioni in linguaggio naturale.',
       timestamp: new Date()
     }
   ]);
@@ -270,19 +270,33 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   };
 
   return (
-    <div className={`bg-white border border-slate-200 rounded-lg shadow-sm transition-all duration-300 ${isExpanded ? 'h-[400px]' : 'h-14'}`}>
+    <div className={`bg-white border border-slate-200 rounded-lg shadow-md transition-all duration-300 ${isExpanded ? 'h-[380px]' : 'h-14'}`}>
       {/* Header */}
       <div 
-        className="flex justify-between items-center p-3 border-b cursor-pointer"
+        className="flex justify-between items-center p-3 border-b cursor-pointer bg-gradient-to-r from-emerald-50 to-blue-50"
         onClick={toggleExpanded}
       >
         <div className="flex items-center gap-2 text-slate-700">
           <MessageSquare size={18} className="text-emerald-500" />
           <h3 className="font-medium">Cash Talk</h3>
+          <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full">Principale</span>
         </div>
-        <button className="text-slate-500 hover:text-slate-700">
-          {isExpanded ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            className="text-slate-500 hover:text-slate-700 p-1 rounded-full hover:bg-slate-100"
+            title="Aiuto"
+            onClick={(e) => {
+              e.stopPropagation();
+              setInputText("Come posso usare cash talk?");
+              handleAnalyze();
+            }}
+          >
+            <HelpCircle size={16} />
+          </button>
+          <button className="text-slate-500 hover:text-slate-700">
+            {isExpanded ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+          </button>
+        </div>
       </div>
       
       {/* Conversazione */}
@@ -292,7 +306,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex flex-col h-[calc(400px-3.5rem)]"
+            className="flex flex-col h-[calc(380px-3.5rem)]"
           >
             {/* Contenitore conversazione */}
             <div 
@@ -319,7 +333,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
                   
                   {item.type === 'suggestion' && (
                     <div className="flex justify-start">
-                      <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg max-w-[80%] border border-blue-100">
+                      <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg max-w-[90%] border border-blue-100">
                         {item.text}
                       </div>
                     </div>
@@ -359,12 +373,12 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
             
             {/* Area input */}
             <div className="p-3 border-t">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
                 {suggestions.map((suggestion, index) => (
                   <button
                     key={index}
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="px-3 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded-full text-slate-700 whitespace-nowrap"
+                    className="px-3 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded-full text-slate-700 whitespace-nowrap transition-colors"
                   >
                     {suggestion}
                   </button>
@@ -378,9 +392,10 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleInputKeydown}
-                  placeholder="Scrivi una transazione o fai una domanda..."
-                  className="flex-1 px-4 py-2 bg-slate-100 rounded-lg border-0 focus:ring-2 focus:ring-emerald-500 text-slate-900"
+                  placeholder="Registra una spesa, comunica un aumento di reddito o chiedi informazioni..."
+                  className="flex-1 px-4 py-2 bg-slate-100 rounded-lg border-0 focus:ring-2 focus:ring-emerald-500 text-slate-900 placeholder-slate-500"
                   disabled={processing}
+                  autoFocus
                 />
                 <button
                   onClick={handleAnalyze}

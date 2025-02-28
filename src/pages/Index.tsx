@@ -10,7 +10,7 @@ import ProjectionsView from '@/components/projections/ProjectionsView';
 import ModalsContainer from '@/components/ui/ModalsContainer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import ConversationalInterface from '@/components/cash-talk/ConversationalInterface';
-import { fadeIn } from '@/lib/animations';
+import { fadeIn, slideUp } from '@/lib/animations';
 
 const Index = () => {
   const [loading, setLoading] = useState(true);
@@ -156,19 +156,21 @@ const Index = () => {
           setActiveModal={setActiveModal}
         />
         
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
           {/* Area conversazionale persistente */}
           {showContent && (
             <motion.div 
               variants={fadeIn}
               initial="hidden"
               animate="visible"
-              className="mb-6"
+              className="mb-6 sticky top-0 z-10"
             >
               <ConversationalInterface viewSetter={setView} />
             </motion.div>
           )}
-          
+        </div>
+        
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-6">
           {/* Status banner */}
           {showContent && (
             <motion.div 
@@ -188,7 +190,10 @@ const Index = () => {
                       <p className="font-medium">Attenzione: La tua spesa supera il budget di base!</p>
                       <p className="text-sm mt-1">Stai spendendo €{totalSpent - baselineLifestyle} in più rispetto al tuo budget di base.</p>
                     </div>
-                    <button className="px-3 py-1.5 bg-white text-red-600 rounded-lg shadow-sm text-sm border border-red-100">
+                    <button 
+                      onClick={() => setView('expenses')}
+                      className="px-3 py-1.5 bg-white text-red-600 rounded-lg shadow-sm text-sm border border-red-100 hover:bg-red-50 transition-colors"
+                    >
                       Rivedi Budget
                     </button>
                   </div>

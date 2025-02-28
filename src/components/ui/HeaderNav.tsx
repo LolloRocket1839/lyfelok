@@ -1,6 +1,6 @@
 
 import { motion } from 'framer-motion';
-import { ArrowUpCircle, LogOut } from 'lucide-react';
+import { ArrowUpCircle, LogOut, LayoutDashboard, PiggyBank, Receipt, TrendingUp } from 'lucide-react';
 import { AppView } from '@/hooks/useLifestyleLock';
 import { slideInRight } from '@/lib/animations';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +23,14 @@ const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavPro
     projections: 'Proiezioni'
   };
 
+  // Icon mapping
+  const viewIcons = {
+    dashboard: <LayoutDashboard size={16} className="mr-2" />,
+    investments: <PiggyBank size={16} className="mr-2" />,
+    expenses: <Receipt size={16} className="mr-2" />,
+    projections: <TrendingUp size={16} className="mr-2" />
+  };
+
   return (
     <motion.header 
       initial={{ y: -20, opacity: 0 }}
@@ -31,12 +39,14 @@ const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavPro
       className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center shadow-md"
     >
       <div className="flex items-center mb-4 sm:mb-0">
-        <h1 className="text-xl font-light tracking-tight">Lifestyle Lock</h1>
-        <div className="ml-4 px-3 py-1 bg-slate-700/70 backdrop-blur-sm rounded-full text-sm font-light">
-          {currentMonth} 2025
+        <div className="flex flex-col sm:flex-row sm:items-center">
+          <h1 className="text-xl font-light tracking-tight mr-4">Lifestyle Lock</h1>
+          <div className="mt-2 sm:mt-0 px-3 py-1 bg-slate-700/70 backdrop-blur-sm rounded-full text-sm font-light">
+            {currentMonth} 2025
+          </div>
         </div>
         {user && (
-          <div className="ml-4 text-sm opacity-70">
+          <div className="hidden sm:block ml-4 text-sm opacity-70">
             {user.email}
           </div>
         )}
@@ -47,12 +57,13 @@ const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavPro
           <button 
             key={navItem}
             onClick={() => setView(navItem)} 
-            className={`px-3 py-1.5 rounded-full text-sm transition-all duration-300 ${
+            className={`px-3 py-1.5 rounded-full text-sm transition-all duration-300 flex items-center ${
               view === navItem 
                 ? 'bg-white text-slate-900 shadow-sm' 
                 : 'hover:bg-slate-700/50'
             }`}
           >
+            {viewIcons[navItem]}
             {viewLabels[navItem]}
           </button>
         ))}
