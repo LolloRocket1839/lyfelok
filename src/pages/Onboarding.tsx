@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 // Animazioni
 const slideUp = {
@@ -21,6 +23,7 @@ const fadeIn = {
 const Onboarding = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [income, setIncome] = useState<number | ''>('');
   const [housingExpense, setHousingExpense] = useState<number | ''>('');
@@ -92,8 +95,28 @@ const Onboarding = () => {
   // Calcola il totale delle spese di base
   const baseLifestyle = Number(housingExpense || 0) + Number(foodExpense || 0) + Number(transportExpense || 0);
 
-  // Vai alla dashboard
-  const goToDashboard = () => {
+  // Vai alla dashboard e segna l'onboarding come completato
+  const goToDashboard = async () => {
+    if (user) {
+      try {
+        // Aggiorna il profilo dell'utente per segnare l'onboarding come completato
+        const { error } = await supabase
+          .from('profiles')
+          .update({ onboarding_completed: true })
+          .eq('id', user.id);
+
+        if (error) {
+          console.error('Errore durante l\'aggiornamento del profilo:', error);
+          toast({
+            title: "Errore",
+            description: "Non è stato possibile salvare il tuo profilo",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Eccezione durante l\'aggiornamento del profilo:', error);
+      }
+    }
     navigate('/');
   };
 
