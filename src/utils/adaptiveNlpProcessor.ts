@@ -1,6 +1,9 @@
 
 import { supabase } from '@/lib/supabase';
 
+// Importazione diretta del modulo nlpProcessor
+import * as nlpProcessorModule from './nlpProcessor';
+
 // Interfaccia per i risultati dell'analisi
 export interface NlpAnalysisResult {
   type: 'spesa' | 'entrata' | 'investimento';
@@ -183,9 +186,8 @@ export class AdaptiveNlpProcessor {
 
   // Ottieni l'analisi di base dal nlpProcessor esistente
   private getBaseAnalysis(text: string) {
-    // Importa in modo dinamico per evitare dipendenze circolari
-    const { analyzeText } = require('./nlpProcessor');
-    return analyzeText(text);
+    // Utilizziamo l'importazione diretta invece di require
+    return nlpProcessorModule.analyzeText(text);
   }
 
   // Tenta di indovinare la categoria di una parola sconosciuta
