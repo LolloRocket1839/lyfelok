@@ -9,7 +9,6 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ui/ProtectedRoute";
-import EnhancedCashTalkButton from "./components/cash-talk/CashTalkButton";
 
 const queryClient = new QueryClient();
 
@@ -26,7 +25,6 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Index />
-                  <EnhancedCashTalkButton />
                 </ProtectedRoute>
               }
             />
