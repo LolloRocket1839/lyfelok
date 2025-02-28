@@ -28,40 +28,57 @@ const Auth = () => {
   // Verificare se l'utente arriva da un link di conferma
   useEffect(() => {
     const handleEmailConfirmation = async () => {
-      const url = new URL(window.location.href);
-      const token_hash = url.searchParams.get('token_hash');
-      const type = url.searchParams.get('type');
-      
-      if (token_hash && type === 'email_confirmation') {
-        try {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash,
-            type: 'signup', // Changed from 'email_confirmation' to 'signup' which is valid
-          });
-          
-          if (error) {
-            toast({
-              title: "Errore di verifica",
-              description: "Non è stato possibile verificare la tua email.",
-              variant: "destructive",
-            });
-          } else {
-            toast({
-              title: "Email verificata",
-              description: "La tua email è stata verificata con successo. Ora puoi accedere.",
+      try {
+        // Ottieni i parametri dalla URL
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        
+        // Cerca token in diversi posti
+        const token_hash = 
+          hashParams.get('token_hash') || 
+          queryParams.get('token_hash');
+        
+        const type = 
+          hashParams.get('type') || 
+          queryParams.get('type');
+        
+        console.log('Confirmation params:', { token_hash, type });
+        
+        if (token_hash && type) {
+          try {
+            // Per Supabase, il tipo corretto per la verifica email è 'signup'
+            const { error } = await supabase.auth.verifyOtp({
+              token_hash,
+              type: 'signup',
             });
             
-            // Pulisci i parametri URL dopo la verifica
-            window.history.replaceState({}, document.title, window.location.pathname);
+            if (error) {
+              console.error('Verification error:', error);
+              toast({
+                title: "Errore di verifica",
+                description: "Non è stato possibile verificare la tua email: " + error.message,
+                variant: "destructive",
+              });
+            } else {
+              toast({
+                title: "Email verificata",
+                description: "La tua email è stata verificata con successo. Ora puoi accedere.",
+              });
+              
+              // Pulisci i parametri URL dopo la verifica
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          } catch (error: any) {
+            console.error("Error during email verification:", error);
+            toast({
+              title: "Errore di verifica",
+              description: "Si è verificato un errore durante la verifica dell'email: " + (error.message || error),
+              variant: "destructive",
+            });
           }
-        } catch (error) {
-          console.error("Error during email verification:", error);
-          toast({
-            title: "Errore di verifica",
-            description: "Si è verificato un errore durante la verifica dell'email.",
-            variant: "destructive",
-          });
         }
+      } catch (error) {
+        console.error("Exception in confirmation handler:", error);
       }
     };
 
