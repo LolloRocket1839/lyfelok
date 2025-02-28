@@ -36,7 +36,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         } else {
           console.log('Stato onboarding:', data?.onboarding_completed);
           // Assicuriamoci che sia trattato come booleano
-          setHasCompletedOnboarding(data?.onboarding_completed !== false);
+          setHasCompletedOnboarding(!!data?.onboarding_completed);
         }
       } catch (error) {
         console.error('Eccezione durante il controllo dello stato di onboarding:', error);
@@ -54,6 +54,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   }, [user, loading]);
 
+  // Aggiungiamo log per debug
+  console.log('ProtectedRoute - user:', user?.id);
+  console.log('ProtectedRoute - loading:', loading);
+  console.log('ProtectedRoute - checkingOnboardingStatus:', checkingOnboardingStatus);
+  console.log('ProtectedRoute - hasCompletedOnboarding:', hasCompletedOnboarding);
+
   if (loading || checkingOnboardingStatus) {
     return <LoadingScreen />;
   }
@@ -63,10 +69,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   // Solo se è esplicitamente false, reindirizza all'onboarding
-  if (user && hasCompletedOnboarding === false) {
+  if (hasCompletedOnboarding === false) {
+    console.log('Reindirizzamento a /onboarding');
     return <Navigate to="/onboarding" />;
   }
 
+  console.log('Rendering children component');
   return <>{children}</>;
 };
 

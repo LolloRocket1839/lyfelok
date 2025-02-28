@@ -136,7 +136,16 @@ const Onboarding = () => {
 
   // Vai alla dashboard e segna l'onboarding come completato
   const goToDashboard = async () => {
-    navigate('/');
+    // Forza un ritardo per assicurarsi che il profilo sia aggiornato
+    toast({
+      title: "Redirect in corso",
+      description: "Ti stiamo reindirizzando alla dashboard...",
+    });
+    
+    // Forza un ritardo per assicurarsi che il profilo sia aggiornato nel database
+    setTimeout(() => {
+      window.location.href = '/'; // Usa una navigazione diretta invece di react-router
+    }, 1500);
   };
 
   return (
