@@ -85,10 +85,46 @@ const Onboarding = () => {
         setInvestments(investmentAmount);
       }
       
+      // Salva le preferenze nel database
+      saveUserPreferences();
+      
       // Mostra la schermata di completamento
       setTimeout(() => {
         setShowWelcomeScreen(true);
       }, 3000);
+    }
+  };
+
+  // Salva le preferenze dell'utente nel database
+  const saveUserPreferences = async () => {
+    if (!user) return;
+    
+    try {
+      const baseLifestyle = Number(housingExpense) + Number(foodExpense) + Number(transportExpense);
+      
+      // Aggiorna il profilo dell'utente con le preferenze
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          income: income || 0,
+          housing_expense: housingExpense || 0,
+          food_expense: foodExpense || 0,
+          transport_expense: transportExpense || 0,
+          has_investments: hasInvestments || false,
+          investment_amount: hasInvestments ? (investmentAmount || 0) : 0
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Errore durante il salvataggio delle preferenze:', error);
+        toast({
+          title: "Errore",
+          description: "Non è stato possibile salvare le tue preferenze",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Eccezione durante il salvataggio delle preferenze:', error);
     }
   };
 
@@ -355,12 +391,20 @@ const Onboarding = () => {
                 </div>
               </div>
               
-              <button
-                onClick={goToDashboard}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-4 px-8 rounded-xl transition-all hover:-translate-y-0.5"
-              >
-                Vai alla Dashboard
-              </button>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={goToDashboard}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-4 px-8 rounded-xl transition-all hover:-translate-y-0.5"
+                >
+                  Vai alla Dashboard
+                </button>
+                <button
+                  onClick={() => setCurrentStep(1)}
+                  className="bg-white border-2 border-slate-200 text-slate-800 hover:border-emerald-500 font-semibold py-4 px-8 rounded-xl transition-all hover:-translate-y-0.5"
+                >
+                  Modifica Scelte
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
