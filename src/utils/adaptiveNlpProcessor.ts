@@ -94,6 +94,16 @@ export class AdaptiveNlpProcessor {
     // Analisi con l'elaboratore di base
     const baseResult = this.getBaseAnalysis(text);
     
+    // Assicuriamoci che baseResult.type sia uno dei tipi validi
+    let validType: 'spesa' | 'entrata' | 'investimento';
+    if (baseResult.type === 'spesa' || baseResult.type === 'entrata' || baseResult.type === 'investimento') {
+      validType = baseResult.type;
+    } else {
+      // Default a 'spesa' se il tipo non è valido
+      validType = 'spesa';
+      console.warn(`Tipo non valido: ${baseResult.type}. Utilizzo 'spesa' come default.`);
+    }
+    
     // Tokenizza il testo per analisi avanzata
     const tokens = this.tokenize(text);
     
@@ -164,7 +174,12 @@ export class AdaptiveNlpProcessor {
     // Combina i risultati con quelli di base, dando priorità all'analisi adattiva
     // se ha confidenza sufficiente
     const result: NlpAnalysisResult = {
-      ...baseResult,
+      type: validType,
+      amount: baseResult.amount,
+      category: baseResult.category,
+      date: baseResult.date,
+      baselineAmount: baseResult.baselineAmount,
+      confidence: baseResult.confidence,
       unknownWords,
       needsFeedback: unknownWords.length > 0
     };
