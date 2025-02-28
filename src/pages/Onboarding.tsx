@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client'; // Utilizza il client centralizzato
+import { supabase } from '@/integrations/supabase/client';
 
 // Animazioni
 const slideUp = {
@@ -91,7 +91,7 @@ const Onboarding = () => {
       // Mostra la schermata di completamento
       setTimeout(() => {
         setShowWelcomeScreen(true);
-      }, 3000);
+      }, 1000);
     }
   };
 
@@ -136,28 +136,6 @@ const Onboarding = () => {
 
   // Vai alla dashboard e segna l'onboarding come completato
   const goToDashboard = async () => {
-    if (user) {
-      try {
-        // Aggiorna il profilo dell'utente per segnare l'onboarding come completato
-        const { error } = await supabase
-          .from('profiles')
-          .update({ onboarding_completed: true })
-          .eq('id', user.id);
-
-        if (error) {
-          console.error('Errore durante l\'aggiornamento del profilo:', error);
-          toast({
-            title: "Errore",
-            description: "Non è stato possibile salvare il tuo profilo",
-            variant: "destructive",
-          });
-        } else {
-          console.log('Flag onboarding_completed impostato a true');
-        }
-      } catch (error) {
-        console.error('Eccezione durante l\'aggiornamento del profilo:', error);
-      }
-    }
     navigate('/');
   };
 
@@ -402,12 +380,6 @@ const Onboarding = () => {
                   className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-4 px-8 rounded-xl transition-all hover:-translate-y-0.5"
                 >
                   Vai alla Dashboard
-                </button>
-                <button
-                  onClick={() => setCurrentStep(1)}
-                  className="bg-white border-2 border-slate-200 text-slate-800 hover:border-emerald-500 font-semibold py-4 px-8 rounded-xl transition-all hover:-translate-y-0.5"
-                >
-                  Modifica Scelte
                 </button>
               </div>
             </motion.div>
