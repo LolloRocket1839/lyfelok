@@ -13,99 +13,365 @@ export function analyzeText(text: string) {
     confidence: 'medium' as 'high' | 'medium' | 'low'
   };
   
-  // Determina il tipo di transazione
-  if (lowerText.includes('spes') || lowerText.includes('pagat') || lowerText.includes('comprat')) {
-    result.type = 'spesa';
-  } else if (lowerText.includes('investit') || lowerText.includes('eth') || 
-            lowerText.includes('azioni') || lowerText.includes('bond') || 
-            lowerText.includes('obbligaz') || lowerText.includes('crypto')) {
-    result.type = 'investimento';
-  } else if (lowerText.includes('ricevut') || lowerText.includes('stipendio') || 
-            lowerText.includes('entrat') || lowerText.includes('guadagnat')) {
+  // Dizionari estesi per tipi di transazione
+  const spesaPatterns = [
+    "spes[ao]", "pagat[ao]", "comprat[ao]", "acquistat[ao]", "pres[ao]", 
+    "pagamento", "bolletta", "fattura", "conto", "rata", "addebito", "prelevato",
+    "addebitato", "scalato", "acquisto", "prelievo", "estratto", "bancomat", "pos"
+  ];
+
+  const entrataPatterns = [
+    "ricevut[ao]", "stipendio", "salario", "entrat[ao]", "guadagnat[ao]", 
+    "incassat[ao]", "bonific[ao]", "entrate", "accredit[ao]", "ricevut[ea]", 
+    "percepito", "ottenuto", "guadagno", "profitto", "incasso", "rendita"
+  ];
+
+  const investimentoPatterns = [
+    "investit[ao]", "comprato azioni", "comprato etf", "acquistat[ao] azioni", 
+    "messo da parte", "risparmiat[ao]", "deposit[ao]", "versament[ao]",
+    "allocat[ao]", "crypto", "trading", "investiment[io]", "fond[io]"
+  ];
+  
+  // Determina il tipo di transazione con pattern matching più avanzato
+  let typeScore = {
+    spesa: 0,
+    entrata: 0,
+    investimento: 0
+  };
+  
+  // Verifica pattern di spesa
+  spesaPatterns.forEach(pattern => {
+    const regex = new RegExp(pattern, 'i');
+    if (regex.test(lowerText)) {
+      typeScore.spesa += 1;
+    }
+  });
+  
+  // Verifica semplice per parole chiave di spesa
+  ["speso", "pagato", "comprato", "acquistato", "bolletta", "fattura"].forEach(word => {
+    if (lowerText.includes(word)) {
+      typeScore.spesa += 2;
+    }
+  });
+  
+  // Verifica pattern di entrata
+  entrataPatterns.forEach(pattern => {
+    const regex = new RegExp(pattern, 'i');
+    if (regex.test(lowerText)) {
+      typeScore.entrata += 1;
+    }
+  });
+  
+  // Verifica semplice per parole chiave di entrata
+  ["ricevuto", "stipendio", "salario", "guadagnato", "incassato", "accreditato", "bonifico"].forEach(word => {
+    if (lowerText.includes(word)) {
+      typeScore.entrata += 2;
+    }
+  });
+  
+  // Verifica pattern di investimento
+  investimentoPatterns.forEach(pattern => {
+    const regex = new RegExp(pattern, 'i');
+    if (regex.test(lowerText)) {
+      typeScore.investimento += 1;
+    }
+  });
+  
+  // Verifica semplice per parole chiave di investimento
+  ["investito", "etf", "azioni", "bond", "crypto", "bitcoin", "ethereum", "obbligazioni"].forEach(word => {
+    if (lowerText.includes(word)) {
+      typeScore.investimento += 2;
+    }
+  });
+  
+  // Determina il tipo con il punteggio più alto
+  if (typeScore.entrata > typeScore.spesa && typeScore.entrata > typeScore.investimento) {
     result.type = 'entrata';
+  } else if (typeScore.investimento > typeScore.spesa && typeScore.investimento > typeScore.entrata) {
+    result.type = 'investimento';
+  } else {
+    result.type = 'spesa'; // Default o se il punteggio di spesa è più alto
   }
   
-  // Estrai importo (cerca pattern come "25€", "€25", "25 euro")
+  // Estrai importo con pattern matching avanzato per vari formati
   const amountPatterns = [
-    /(\d+[.,]?\d*)[ ]?[€$]/g,      // 25€, 25.50€
-    /[€$][ ]?(\d+[.,]?\d*)/g,      // €25, € 25.50
-    /(\d+[.,]?\d*)[ ]?euro/gi      // 25 euro
+    /(\d+[.,]?\d*)[ ]?[€$]/g,                    // 25€, 25.50€
+    /[€$][ ]?(\d+[.,]?\d*)/g,                    // €25, € 25.50
+    /(\d+[.,]?\d*)[ ]?euro/gi,                   // 25 euro
+    /(\d+[.,]?\d*)[ ]?€uro/gi,                   // 25 €uro (variante)
+    /(\d+[.,]?\d*)(?: |-)?(eur|euro|euri|euros)/gi, // 25 eur, 25-euro, 25euro
+    /(\d+)[.,](\d{1,2})[ ]?(?:euro|eur|€)/gi,   // 25,50 euro o 25.50 euro
+    /(?:euro|eur|€)[ ]?(\d+)[.,](\d{1,2})/gi,   // euro 25,50 o € 25.50
+    /(?:speso|pagato|costa|costato|prezzo|costo|importo di) (?:circa |quasi |poco più di |poco meno di )?(?:€|euro|eur)? ?(\d+[.,]?\d*)(?: ?€| ?euro| ?eur)?/gi // ho speso circa 25 euro, ho pagato 25€
   ];
   
   let amountMatch = null;
+  let highestConfidence = 0;
+  
   for (const pattern of amountPatterns) {
     const matches = [...lowerText.matchAll(pattern)];
     if (matches.length > 0) {
-      amountMatch = matches[0][1];
-      break;
+      // Assegna una confidenza alla corrispondenza in base alla posizione e alla completezza
+      for (const match of matches) {
+        const value = match[1];
+        const confidence = value.length + (1 / (match.index + 1)); // Maggiore lunghezza e posizione anticipata = maggiore confidenza
+        
+        if (confidence > highestConfidence) {
+          highestConfidence = confidence;
+          if (match[2] && match[1].indexOf(',') === -1 && match[1].indexOf('.') === -1) {
+            // Se abbiamo catturato separatamente il numero e i decimali (es: 25,50)
+            amountMatch = `${match[1]}.${match[2]}`;
+          } else {
+            amountMatch = match[1];
+          }
+        }
+      }
     }
   }
   
   if (amountMatch) {
-    result.amount = parseFloat(amountMatch.replace(',', '.'));
+    // Normalizza il formato dell'importo (virgola -> punto)
+    amountMatch = amountMatch.replace(',', '.');
+    result.amount = parseFloat(amountMatch);
   }
   
-  // Determina categoria in base al tipo
+  // Dizionari estesi per categorie di spesa
+  const expenseCategories = {
+    'Cibo': [
+      "ristorante", "trattoria", "pizzeria", "sushi", "fast food", "mcdonald", 
+      "pranzo", "cena", "colazione", "brunch", "aperitivo", "bar", "caffè", "caffetteria",
+      "espresso", "cappuccino", "pasticceria", "cornetto", "gelato", "supermercato", 
+      "spesa", "alimentari", "cibo", "alimentar", "grocery", "mangiato", "bevuto"
+    ],
+    'Alloggio': [
+      "affitto", "mutuo", "condominio", "casa", "bolletta", "utenze", "luce", 
+      "elettricità", "gas", "metano", "riscaldamento", "acqua", "tari", "rifiuti",
+      "immondizia", "imu", "tasi", "wifi", "internet", "telefono", "fibra"
+    ],
+    'Trasporto': [
+      "benzina", "carburante", "diesel", "gasolio", "rifornimento", "distributore",
+      "parcheggio", "autostrada", "pedaggio", "telepass", "treno", "biglietto", 
+      "abbonamento", "mensile", "annuale", "bus", "metro", "metropolitana", "tram",
+      "taxi", "uber", "lyft", "car sharing", "sharing", "monopattino", "bici",
+      "aereo", "volo", "lowcost", "ryanair", "easyjet", "trenitalia", "italo"
+    ],
+    'Salute': [
+      "farmacia", "medicinale", "medicina", "farmaco", "dottore", "medico", 
+      "visita", "specialista", "analisi", "esame", "sangue", "radiografia",
+      "dentista", "odontoiatra", "ottico", "occhiali", "lenti", "fisioterapia",
+      "terapia", "massaggio", "cura", "intervento", "ricovero", "ospedale"
+    ],
+    'Intrattenimento': [
+      "cinema", "film", "biglietto", "concerto", "teatro", "spettacolo", "museo",
+      "mostra", "evento", "festival", "netflix", "spotify", "prime", "disney",
+      "abbonamento", "streaming", "gioco", "videogioco", "console", "pc", "gaming",
+      "book", "libro", "ebook", "kindle", "audible", "musica", "disco", "vinile",
+      "bar", "pub", "club", "discoteca", "drink", "cocktail", "aperitivo"
+    ],
+    'Shopping': [
+      "vestiti", "abbigliamento", "scarpe", "accessori", "borsa", "maglietta",
+      "pantaloni", "jeans", "felpa", "giacca", "cappotto", "maglione", "camicia",
+      "gonna", "vestito", "zaino", "h&m", "zara", "nike", "adidas", "negozio",
+      "mall", "centro commerciale", "outlet", "saldi", "amazon", "online"
+    ],
+    'Tecnologia': [
+      "telefono", "smartphone", "cellulare", "iphone", "samsung", "tablet", "ipad",
+      "computer", "pc", "laptop", "notebook", "desktop", "monitor", "stampante",
+      "scanner", "cuffie", "auricolari", "airpods", "accessorio", "caricatore",
+      "usb", "hard disk", "ssd", "memoria", "app", "applicazione", "software"
+    ],
+    'Fitness': [
+      "palestra", "abbonamento", "mensile", "annuale", "personal trainer", "allenamento",
+      "fitness", "corso", "yoga", "pilates", "crossfit", "nuoto", "piscina", 
+      "tennis", "padel", "calcetto", "calcio", "basket", "attrezzatura", "scarpe"
+    ]
+  };
+  
+  // Dizionari per categorie di investimento
+  const investmentCategories = {
+    'ETF': [
+      "etf", "msci", "vanguard", "ishares", "lyxor", "amundi", "invesco", "xtrackers",
+      "world", "emerging", "markets", "europe", "usa", "america", "asia", "global",
+      "index", "indice", "dividendi", "growth", "value", "small", "mid", "large", "cap"
+    ],
+    'Azioni': [
+      "azioni", "azione", "azionario", "titolo", "titoli", "stock", "stocks", "share",
+      "shares", "equity", "equities", "borsa", "nasdaq", "nyse", "ftse", "mib", "dax",
+      "piazza affari", "blue chip", "dividend", "dividendo", "cedola", "stacco"
+    ],
+    'Obbligazioni': [
+      "obbligazioni", "obbligazione", "bond", "bonds", "corporate", "governative",
+      "government", "treasury", "btp", "bot", "cct", "ctz", "buono", "tesoro",
+      "cedola", "duration", "scadenza", "maturity", "high yield", "investment grade",
+      "rating", "coupon", "nominale", "emissione", "rimborso"
+    ],
+    'Crypto': [
+      "crypto", "criptovaluta", "bitcoin", "btc", "ethereum", "eth", "altcoin",
+      "token", "blockchain", "wallet", "exchange", "binance", "coinbase", "kraken",
+      "mining", "staking", "defi", "nft", "ledger", "trezor", "cold storage"
+    ],
+    'Immobiliare': [
+      "immobiliare", "immobile", "casa", "appartamento", "terreno", "property",
+      "real estate", "reit", "siiq", "fondi immobiliari", "mattone", "affitto",
+      "rendita", "locazione", "nuda proprietà", "usufrutto"
+    ],
+    'Fondi': [
+      "fondo", "fondi", "gestito", "comune", "attivo", "passivo", "investimento",
+      "sicav", "bilanciato", "obbligazionario", "azionario", "flessibile", "prudente",
+      "dinamico", "aggressive", "defensivo", "strategia", "asset allocation"
+    ],
+    'Previdenza': [
+      "pensione", "previdenza", "integrativa", "complementare", "pip", "fondo pensione",
+      "tfr", "contributivo", "rendita", "vitalizio", "vecchiaia", "futuro"
+    ]
+  };
+  
+  // Dizionari per categorie di entrata
+  const incomeCategories = {
+    'Stipendio': [
+      "stipendio", "salario", "busta paga", "mensile", "mensili", "paga", "retribuzione",
+      "compenso", "emolumenti", "netto", "lordo", "ral", "reddito", "entrata principale"
+    ],
+    'Bonus': [
+      "bonus", "premio", "incentivo", "produzione", "risultato", "una tantum", "gratifica",
+      "tredicesima", "quattordicesima", "mensilità aggiuntiva", "straordinari", "extra"
+    ],
+    'Dividendi': [
+      "dividendo", "dividendi", "cedola", "cedole", "stacco", "distribuzione", "utile",
+      "profitto", "rendita", "yield", "rendimento", "investimento", "azioni", "titoli"
+    ],
+    'Freelance': [
+      "fattura", "fatturato", "compenso", "onorario", "parcella", "consulenza", 
+      "prestazione", "professionale", "autonomo", "p.iva", "partita iva", "cliente"
+    ],
+    'Affitto': [
+      "affitto", "canone", "locazione", "inquilino", "immobile", "rendita", "immobiliare",
+      "casa", "appartamento", "entrata", "passiva", "reddito passivo", "proprietà"
+    ],
+    'Rimborsi': [
+      "rimborso", "spese", "trasferta", "viaggio", "missione", "730", "irpef", "tasse",
+      "f24", "restituzione", "risarcimento", "indennizzo", "cashback"
+    ]
+  };
+  
+  // Determina categoria in base al tipo con punteggio di somiglianza
+  let categoryScores: Record<string, number> = {};
+  
   if (result.type === 'spesa') {
-    // Categorie di spesa
-    if (lowerText.includes('ristorante') || lowerText.includes('cena') || 
-        lowerText.includes('pranzo') || lowerText.includes('caffè') || 
-        lowerText.includes('cafe') || lowerText.includes('supermercato') ||
-        lowerText.includes('cibo')) {
-      result.category = 'Cibo';
-    } else if (lowerText.includes('affitto') || lowerText.includes('mutuo') || 
-              lowerText.includes('bolletta')) {
-      result.category = 'Alloggio';
-    } else if (lowerText.includes('benzina') || lowerText.includes('treno') || 
-              lowerText.includes('bus') || lowerText.includes('metro') || 
-              lowerText.includes('uber') || lowerText.includes('taxi')) {
-      result.category = 'Trasporto';
-    } else if (lowerText.includes('cinema') || lowerText.includes('concerto') || 
-              lowerText.includes('netflix') || lowerText.includes('spotify')) {
-      result.category = 'Intrattenimento';
-    } else {
-      result.category = 'Altro';
+    // Calcola punteggi per categorie di spesa
+    for (const [category, keywords] of Object.entries(expenseCategories)) {
+      categoryScores[category] = 0;
+      
+      for (const keyword of keywords) {
+        if (lowerText.includes(keyword)) {
+          categoryScores[category] += 1;
+          // Bonus per parole chiave più specifiche o più lunghe
+          if (keyword.length > 6) {
+            categoryScores[category] += 0.5;
+          }
+        }
+      }
     }
   } else if (result.type === 'investimento') {
-    // Categorie di investimento
-    if (lowerText.includes('etf') || lowerText.includes('msci')) {
-      result.category = 'ETF';
-    } else if (lowerText.includes('azioni') || lowerText.includes('azion')) {
-      result.category = 'Azioni';
-    } else if (lowerText.includes('bond') || lowerText.includes('obbligaz')) {
-      result.category = 'Obbligazioni';
-    } else if (lowerText.includes('crypto') || lowerText.includes('bitcoin')) {
-      result.category = 'Crypto';
-    } else {
-      result.category = 'Altro';
+    // Calcola punteggi per categorie di investimento
+    for (const [category, keywords] of Object.entries(investmentCategories)) {
+      categoryScores[category] = 0;
+      
+      for (const keyword of keywords) {
+        if (lowerText.includes(keyword)) {
+          categoryScores[category] += 1;
+          // Bonus per parole chiave più specifiche
+          if (keyword.length > 6) {
+            categoryScores[category] += 0.5;
+          }
+        }
+      }
     }
   } else if (result.type === 'entrata') {
-    // Categorie di entrata
-    if (lowerText.includes('stipendio') || lowerText.includes('salario')) {
-      result.category = 'Stipendio';
-    } else if (lowerText.includes('bonus') || lowerText.includes('premio')) {
-      result.category = 'Bonus';
-    } else if (lowerText.includes('dividend')) {
-      result.category = 'Dividendi';
-    } else {
-      result.category = 'Altra entrata';
+    // Calcola punteggi per categorie di entrata
+    for (const [category, keywords] of Object.entries(incomeCategories)) {
+      categoryScores[category] = 0;
+      
+      for (const keyword of keywords) {
+        if (lowerText.includes(keyword)) {
+          categoryScores[category] += 1;
+          // Bonus per parole chiave più specifiche
+          if (keyword.length > 6) {
+            categoryScores[category] += 0.5;
+          }
+        }
+      }
     }
   }
+  
+  // Trova la categoria con il punteggio più alto
+  let bestCategory = 'Altro';
+  let highestCategoryScore = 0;
+  
+  for (const [category, score] of Object.entries(categoryScores)) {
+    if (score > highestCategoryScore) {
+      highestCategoryScore = score;
+      bestCategory = category;
+    }
+  }
+  
+  // Assegna categoria solo se il punteggio è sopra una soglia minima
+  if (highestCategoryScore >= 1) {
+    result.category = bestCategory;
+  } else {
+    // Categorie predefinite per ogni tipo se non ne viene trovata una specifica
+    if (result.type === 'spesa') {
+      result.category = 'Altro';
+    } else if (result.type === 'investimento') {
+      result.category = 'ETF'; // Categoria di investimento predefinita
+    } else if (result.type === 'entrata') {
+      result.category = 'Stipendio'; // Categoria di entrata predefinita
+    }
+  }
+  
+  // Estrazione data (implementazione base - potrebbe essere estesa)
+  const datePatterns = [
+    /(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})/g, // formati come 25/12/2023, 25-12-2023, 25.12.2023
+    /(ieri|oggi|domani)/gi, // date relative semplici
+    /(luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)( scorso| prossimo)?/gi // giorni della settimana
+  ];
   
   // Imposta il baselineAmount uguale all'amount per le spese
   if (result.type === 'spesa') {
     result.baselineAmount = result.amount;
   }
   
-  // Determina la confidenza dell'interpretazione
+  // Determina la confidenza dell'interpretazione in modo più sofisticato
   let confidenceScore = 0;
-  if (result.type) confidenceScore += 1;
-  if (result.amount > 0) confidenceScore += 1;
-  if (result.category !== 'Altro') confidenceScore += 1;
   
-  if (confidenceScore >= 3) {
+  // Confidenza sul tipo
+  if (typeScore[result.type] >= 3) {
+    confidenceScore += 2;
+  } else if (typeScore[result.type] > 0) {
+    confidenceScore += 1;
+  }
+  
+  // Confidenza sull'importo
+  if (result.amount > 0) {
+    confidenceScore += 2;
+    
+    // Bonus per importi "ragionevoli" (evita valori probabilmente errati)
+    if (result.amount >= 1 && result.amount <= 10000) {
+      confidenceScore += 0.5;
+    }
+  }
+  
+  // Confidenza sulla categoria
+  if (result.category !== 'Altro' && highestCategoryScore >= 2) {
+    confidenceScore += 2;
+  } else if (result.category !== 'Altro') {
+    confidenceScore += 1;
+  }
+  
+  // Assegna livello di confidenza
+  if (confidenceScore >= 4) {
     result.confidence = 'high';
-  } else if (confidenceScore === 2) {
+  } else if (confidenceScore >= 2) {
     result.confidence = 'medium';
   } else {
     result.confidence = 'low';
