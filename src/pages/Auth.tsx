@@ -1,10 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { User, LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,6 +15,7 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const { signIn, signUp, user, loading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Gestione degli errori di validazione
   const [errors, setErrors] = useState({
@@ -22,6 +24,49 @@ const Auth = () => {
     password: '',
     confirmPassword: ''
   });
+
+  // Verificare se l'utente arriva da un link di conferma
+  useEffect(() => {
+    const handleEmailConfirmation = async () => {
+      const url = new URL(window.location.href);
+      const token_hash = url.searchParams.get('token_hash');
+      const type = url.searchParams.get('type');
+      
+      if (token_hash && type === 'email_confirmation') {
+        try {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash,
+            type: 'email_confirmation',
+          });
+          
+          if (error) {
+            toast({
+              title: "Errore di verifica",
+              description: "Non è stato possibile verificare la tua email.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Email verificata",
+              description: "La tua email è stata verificata con successo. Ora puoi accedere.",
+            });
+            
+            // Pulisci i parametri URL dopo la verifica
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        } catch (error) {
+          console.error("Error during email verification:", error);
+          toast({
+            title: "Errore di verifica",
+            description: "Si è verificato un errore durante la verifica dell'email.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    handleEmailConfirmation();
+  }, [toast]);
 
   // Funzione per validare il form
   const validateForm = () => {
@@ -44,7 +89,10 @@ const Auth = () => {
 
     // Validazione conferma email (solo in registrazione)
     if (!isLogin) {
-      if (email !== confirmEmail) {
+      if (!confirmEmail) {
+        newErrors.confirmEmail = 'La conferma dell\'email è obbligatoria';
+        isValid = false;
+      } else if (email !== confirmEmail) {
         newErrors.confirmEmail = 'Le email non coincidono';
         isValid = false;
       }
@@ -61,7 +109,10 @@ const Auth = () => {
 
     // Validazione conferma password (solo in registrazione)
     if (!isLogin) {
-      if (password !== confirmPassword) {
+      if (!confirmPassword) {
+        newErrors.confirmPassword = 'La conferma della password è obbligatoria';
+        isValid = false;
+      } else if (password !== confirmPassword) {
         newErrors.confirmPassword = 'Le password non coincidono';
         isValid = false;
       }
@@ -81,25 +132,13 @@ const Auth = () => {
     if (isLogin) {
       await signIn(email, password);
     } else {
-      if (email !== confirmEmail) {
-        toast({
-          title: "Errore",
-          description: "Le email non coincidono",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (password !== confirmPassword) {
-        toast({
-          title: "Errore",
-          description: "Le password non coincidono",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       await signUp(email, password);
+      // Dopo la registrazione, mostra un toast e passa alla schermata di login
+      setTimeout(() => {
+        setIsLogin(true);
+        setEmail('');
+        setPassword('');
+      }, 2000);
     }
   };
 
