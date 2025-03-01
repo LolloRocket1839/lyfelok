@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { mainCategories } from '@/utils/transactionStore';
 import { Transaction } from '@/utils/transactionRouter';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ElegantFeedbackUIProps {
   transaction: Transaction;
@@ -15,6 +17,7 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
   // Visibility state
   const [visible, setVisible] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const { user } = useAuth();
   
   // Auto-dismiss timeout
   useEffect(() => {
@@ -28,15 +31,134 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
   }, [visible]);
   
   // Handle category selection
-  const handleSelect = (categoryId: string) => {
-    onSelectCategory(categoryId);
-    setVisible(false);
+  const handleSelect = async (categoryId: string) => {
+    try {
+      // Update local UI first for responsiveness
+      onSelectCategory(categoryId);
+      
+      // If user is logged in, update mapping in Supabase
+      if (user) {
+        await updateCategoryMapping(transaction.description, categoryId, user.id);
+      }
+      
+      setVisible(false);
+    } catch (error) {
+      console.error("Error updating category mapping:", error);
+      // Still update the UI even if the backend update fails
+      setVisible(false);
+    }
   };
   
   // Handle dismissal
   const handleDismiss = () => {
     setVisible(false);
     onDismiss();
+  };
+  
+  // Update category mapping in Supabase
+  const updateCategoryMapping = async (description: string, categoryId: string, userId: string) => {
+    try {
+      // Extract keywords from description
+      const keywords = extractKeywords(description);
+      
+      // Update each keyword
+      for (const keyword of keywords) {
+        // Check if mapping already exists for this user and keyword
+        const { data: existing } = await supabase
+          .from('user_category_mappings')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('keyword', keyword)
+          .single();
+        
+        if (existing) {
+          // Update existing mapping
+          const categories = existing.categories || {};
+          categories[categoryId] = (categories[categoryId] || 0) + 1;
+          
+          await supabase
+            .from('user_category_mappings')
+            .update({ 
+              categories: categories,
+              updated_at: new Date()
+            })
+            .eq('id', existing.id);
+        } else {
+          // Create new mapping
+          const categories = {};
+          categories[categoryId] = 1;
+          
+          await supabase
+            .from('user_category_mappings')
+            .insert({
+              user_id: userId,
+              keyword: keyword,
+              categories: categories,
+              created_at: new Date(),
+              updated_at: new Date()
+            });
+        }
+        
+        // Also update global mappings
+        await updateGlobalMapping(keyword, categoryId);
+      }
+    } catch (error) {
+      console.error("Error updating category mappings:", error);
+      // Don't throw, we want the UI to still update even if backend fails
+    }
+  };
+  
+  // Update global category mapping
+  const updateGlobalMapping = async (keyword: string, categoryId: string) => {
+    try {
+      // Check if global mapping already exists
+      const { data: existing } = await supabase
+        .from('global_category_mappings')
+        .select('*')
+        .eq('keyword', keyword)
+        .single();
+      
+      if (existing) {
+        // Update existing mapping
+        const categories = existing.categories || {};
+        categories[categoryId] = (categories[categoryId] || 0) + 1;
+        
+        await supabase
+          .from('global_category_mappings')
+          .update({ 
+            categories: categories,
+            count: existing.count + 1,
+            updated_at: new Date()
+          })
+          .eq('id', existing.id);
+      } else {
+        // Create new mapping
+        const categories = {};
+        categories[categoryId] = 1;
+        
+        await supabase
+          .from('global_category_mappings')
+          .insert({
+            keyword: keyword,
+            categories: categories,
+            count: 1,
+            created_at: new Date(),
+            updated_at: new Date()
+          });
+      }
+    } catch (error) {
+      console.error("Error updating global category mapping:", error);
+    }
+  };
+  
+  // Extract keywords from description
+  const extractKeywords = (text: string): string[] => {
+    // Remove stopwords, tokenize and filter
+    const stopwords = ['di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra', 'il', 'lo', 'la', 'i', 'gli', 'le'];
+    return text
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !stopwords.includes(word));
   };
   
   // Don't render if not visible

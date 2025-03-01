@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      global_category_mappings: {
+        Row: {
+          categories: Json
+          count: number | null
+          created_at: string | null
+          id: string
+          keyword: string
+          updated_at: string | null
+        }
+        Insert: {
+          categories: Json
+          count?: number | null
+          created_at?: string | null
+          id?: string
+          keyword: string
+          updated_at?: string | null
+        }
+        Update: {
+          categories?: Json
+          count?: number | null
+          created_at?: string | null
+          id?: string
+          keyword?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -51,6 +78,33 @@ export type Database = {
           transport_expense?: number | null
           updated_at?: string | null
           username?: string | null
+        }
+        Relationships: []
+      }
+      user_category_mappings: {
+        Row: {
+          categories: Json
+          created_at: string | null
+          id: string
+          keyword: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          categories: Json
+          created_at?: string | null
+          id?: string
+          keyword: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          categories?: Json
+          created_at?: string | null
+          id?: string
+          keyword?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
