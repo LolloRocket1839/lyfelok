@@ -15,6 +15,7 @@ export interface Transaction {
   subcategory?: string;
   date: string;
   metadata?: Record<string, any>;
+  alternativeCategories?: string[]; // Categorie alternative suggerite
 }
 
 // Converts NLP analysis result to a standardized transaction
@@ -45,12 +46,15 @@ export const convertAnalysisToTransaction = (
   return {
     type,
     amount: analysis.amount,
-    description: analysis.unknownWords?.join(' ') || analysis.category,
+    description: analysis.description || analysis.unknownWords?.join(' ') || analysis.category,
     category: analysis.category,
     date,
+    alternativeCategories: analysis.alternativeCategories,
     metadata: {
       confidence: analysis.confidence,
-      baselineAmount: analysis.baselineAmount
+      baselineAmount: analysis.baselineAmount,
+      rawInput: analysis.metadata?.rawInput || '',
+      processingTime: analysis.metadata?.processingTime || new Date()
     }
   };
 };

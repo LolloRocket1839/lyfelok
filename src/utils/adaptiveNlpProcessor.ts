@@ -9,9 +9,16 @@ export interface NlpAnalysisResult {
   confidence: 'high' | 'medium' | 'low';
   needsFeedback?: boolean; // Aggiunto campo needsFeedback
   unknownWords?: string[]; // Parole che potrebbero richiedere feedback
+  description?: string;    // Descrizione della transazione
+  metadata?: {             // Metadati aggiuntivi per la transazione
+    rawInput?: string;     // Input originale
+    processingTime?: Date; // Timestamp dell'elaborazione
+    corrected?: boolean;   // Se la transazione è stata corretta
+  };
+  alternativeCategories?: string[]; // Categorie alternative suggerite
 }
 
-// Classe del processore NLP migliorato
+// Classe del processore NLP migliorato con funzionalità di CashTalk v2.0
 class AdaptiveNlpProcessor {
   private userId: string | null = null;
   private initialized: boolean = false;
@@ -19,6 +26,7 @@ class AdaptiveNlpProcessor {
   private transactionHistory: any[] = [];
   private categoryMappings: Record<string, string> = {};
   private pendingFeedbackWords: Array<{word: string, guessedCategory: string}> = []; // Parole in attesa di feedback
+  private userPatterns: Array<{description: string, category: string, similarity: number}> = []; // Pattern di transazioni dell'utente
 
   // Imposta l'ID utente
   setUserId(id: string): void {
@@ -134,14 +142,69 @@ class AdaptiveNlpProcessor {
     }
   }
 
+  // Normalizza il testo dell'input (nuova funzionalità da CashTalk v2.0)
+  normalizeText(text: string): string {
+    // Rimuovi caratteri speciali 
+    let normalized = text.toLowerCase().trim();
+    
+    // Normalizza formati numerici (1.000,00 -> 1000.00)
+    const euroFormat = /(\d{1,3}(?:\.\d{3})+),(\d{2})/g;
+    normalized = normalized.replace(euroFormat, (match, intPart, decimalPart) => {
+      return intPart.replace(/\./g, '') + '.' + decimalPart;
+    });
+    
+    // Gestione casi con solo virgola (10,50)
+    const commaFormat = /(\d+),(\d{2})\b/g;
+    normalized = normalized.replace(commaFormat, '$1.$2');
+    
+    // Espandi abbreviazioni comuni
+    const abbreviations: Record<string, string> = {
+      'stip': 'stipendio',
+      'rist': 'ristorante',
+      'risc': 'riscaldamento',
+      'sup': 'supermercato',
+      'carb': 'carburante',
+      'benzina': 'carburante',
+      'bolla': 'bolletta',
+      'spesa': 'supermercato',
+    };
+    
+    for (const [abbr, full] of Object.entries(abbreviations)) {
+      const regex = new RegExp(`\\b${abbr}\\b`, 'gi');
+      normalized = normalized.replace(regex, full);
+    }
+    
+    // Normalizza simboli di valuta
+    const currencyMap: Record<string, string> = {
+      '€': 'euro',
+      '$': 'dollari',
+      '£': 'sterline',
+      'eur': 'euro',
+      'usd': 'dollari',
+      'gbp': 'sterline',
+    };
+    
+    for (const [symbol, name] of Object.entries(currencyMap)) {
+      // Sostituisci sia prima che dopo il numero
+      normalized = normalized.replace(new RegExp(`${symbol}\\s*(\\d+)`, 'g'), `$1 ${name}`);
+      normalized = normalized.replace(new RegExp(`(\\d+)\\s*${symbol}`, 'g'), `$1 ${name}`);
+    }
+    
+    return normalized;
+  }
+
   // Analizza il testo e restituisce un risultato strutturato
   analyzeText(text: string): NlpAnalysisResult {
     if (!this.initialized) {
       console.warn('NLP Processor non inizializzato, risultati potrebbero essere imprecisi');
     }
     
+    // Normalizza il testo prima dell'analisi (nuova funzionalità)
+    const normalizedText = this.normalizeText(text);
+    console.log('Testo normalizzato:', normalizedText);
+    
     // Utilizziamo una funzione di analisi testuale più avanzata
-    const baseResult = this.performTextAnalysis(text);
+    const baseResult = this.performTextAnalysis(normalizedText);
     
     // Verifica che il tipo sia valido
     const validTypes = ['spesa', 'entrata', 'investimento'] as const;
@@ -153,6 +216,19 @@ class AdaptiveNlpProcessor {
       console.warn(`Tipo non valido: ${baseResult.type}, impostato a 'spesa'`);
     }
     
+    // Cerchiamo pattern simili tra le transazioni precedenti
+    let alternativeCategories: string[] = [];
+    if (this.userPatterns.length > 0 && baseResult.description) {
+      const similarPatterns = this.findSimilarPatterns(baseResult.description);
+      
+      // Se troviamo pattern simili, aggiungiamo le loro categorie come alternative
+      if (similarPatterns.length > 0) {
+        alternativeCategories = similarPatterns
+          .map(p => p.category)
+          .filter((c, i, self) => self.indexOf(c) === i); // Rimuovi duplicati
+      }
+    }
+    
     // Costruiamo un oggetto di risposta correttamente tipizzato
     const result: NlpAnalysisResult = {
       type: validatedType,
@@ -162,7 +238,14 @@ class AdaptiveNlpProcessor {
       baselineAmount: baseResult.baselineAmount,
       confidence: baseResult.confidence,
       needsFeedback: baseResult.needsFeedback || false,
-      unknownWords: baseResult.unknownWords || []
+      unknownWords: baseResult.unknownWords || [],
+      description: baseResult.description,
+      metadata: {
+        rawInput: normalizedText,
+        processingTime: new Date(),
+        corrected: false
+      },
+      alternativeCategories: alternativeCategories.length > 0 ? alternativeCategories : undefined
     };
     
     // Memorizza questa transazione nella cronologia
@@ -202,7 +285,8 @@ class AdaptiveNlpProcessor {
       category: 'Altro',
       date: new Date().toISOString().split('T')[0], // Data odierna
       baselineAmount: 0, // Per le spese, sarà uguale all'amount come valore predefinito
-      confidence: 'medium' as 'high' | 'medium' | 'low'
+      confidence: 'medium' as 'high' | 'medium' | 'low',
+      description: '' // Descrizione della transazione
     };
     
     // Dizionari estesi per tipi di transazione
@@ -561,6 +645,9 @@ class AdaptiveNlpProcessor {
       }
     }
     
+    // Estrazione descrizione migliorata
+    result.description = this.extractDescription(lowerText, result.amount);
+    
     // Estrazione data (implementazione base - potrebbe essere estesa)
     const datePatterns = [
       /(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})/g, // formati come 25/12/2023, 25-12-2023, 25.12.2023
@@ -612,6 +699,39 @@ class AdaptiveNlpProcessor {
     return result;
   }
 
+  // Nuova funzione per estrarre descrizione della transazione
+  private extractDescription(text: string, amount: number): string {
+    // Rimuovi riferimenti all'importo e alla valuta
+    let cleanText = text;
+    
+    if (amount !== null) {
+      cleanText = cleanText.replace(new RegExp(`\\b${amount}\\b`), '');
+    }
+    
+    const currencyTerms = ['euro', 'eur', '€', 'dollari', '$', 'sterline', '£'];
+    for (const term of currencyTerms) {
+      cleanText = cleanText.replace(new RegExp(`\\b${term}\\b`, 'gi'), '');
+    }
+    
+    // Rimuovi date comuni
+    const dateTerms = ['oggi', 'ieri', 'domani', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica'];
+    for (const term of dateTerms) {
+      cleanText = cleanText.replace(new RegExp(`\\b${term}\\b`, 'gi'), '');
+    }
+    
+    // Rimuovi parole comuni (stopwords italiane)
+    const stopWords = ['il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una', 'di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra', 'ho', 'hai', 'ha', 'abbiamo', 'avete', 'hanno', 'sono', 'sei', 'è', 'siamo', 'siete', 'nel', 'nella', 'nello', 'negli', 'nelle'];
+    
+    for (const word of stopWords) {
+      cleanText = cleanText.replace(new RegExp(`\\b${word}\\b`, 'gi'), '');
+    }
+    
+    // Normalizza spazi
+    cleanText = cleanText.replace(/\s+/g, ' ').trim();
+    
+    return cleanText || "transazione generica";
+  }
+
   // Memorizza feedback dell'utente per migliorare le future analisi
   storeFeedback(originalAnalysis: NlpAnalysisResult, correctedAnalysis: NlpAnalysisResult): void {
     if (!this.initialized) {
@@ -624,6 +744,15 @@ class AdaptiveNlpProcessor {
       originale: originalAnalysis,
       corretto: correctedAnalysis
     });
+    
+    // Aggiorna i pattern utente con la descrizione corretta
+    if (originalAnalysis.description && correctedAnalysis.category) {
+      this.addUserPattern(
+        originalAnalysis.description,
+        correctedAnalysis.category,
+        1.0 // Alta confidenza perché è un feedback esplicito dell'utente
+      );
+    }
     
     // Idealmente, questo feedback verrebbe salvato in un database per migliorare l'algoritmo
   }
@@ -654,6 +783,77 @@ class AdaptiveNlpProcessor {
     }
     
     // In un'implementazione reale, salveremmo queste mappature personalizzate in un database
+  }
+
+  // NUOVI METODI DAL SISTEMA DI CASHTALK V2.0
+  
+  // Aggiunge un pattern utente
+  addUserPattern(description: string, category: string, similarity: number): void {
+    // Controlla se esiste già un pattern simile
+    const existingPatternIndex = this.userPatterns.findIndex(
+      p => this.calculateSimilarity(p.description, description) > 0.8
+    );
+    
+    if (existingPatternIndex >= 0) {
+      // Aggiorna il pattern esistente
+      this.userPatterns[existingPatternIndex] = {
+        description,
+        category,
+        similarity: Math.max(similarity, this.userPatterns[existingPatternIndex].similarity)
+      };
+    } else {
+      // Aggiungi nuovo pattern
+      this.userPatterns.push({
+        description,
+        category,
+        similarity
+      });
+    }
+    
+    console.log(`Pattern utente aggiunto/aggiornato: "${description}" -> ${category}`);
+  }
+  
+  // Trova pattern simili a una descrizione
+  findSimilarPatterns(description: string): Array<{description: string, category: string, similarity: number}> {
+    const results: Array<{description: string, category: string, similarity: number}> = [];
+    
+    for (const pattern of this.userPatterns) {
+      const similarity = this.calculateSimilarity(description, pattern.description);
+      
+      if (similarity > 0.5) { // Soglia minima di somiglianza
+        results.push({
+          description: pattern.description,
+          category: pattern.category,
+          similarity
+        });
+      }
+    }
+    
+    // Ordina per similarità in ordine decrescente
+    return results.sort((a, b) => b.similarity - a.similarity);
+  }
+  
+  // Calcola similarità tra due testi (Metodo Jaccard semplificato)
+  calculateSimilarity(text1: string, text2: string): number {
+    if (!text1 || !text2) return 0;
+    
+    // Tokenizza i testi
+    const tokens1 = text1.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+    const tokens2 = text2.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+    
+    if (tokens1.length === 0 || tokens2.length === 0) return 0;
+    
+    // Conta i token in comune
+    let commonTokens = 0;
+    for (const token of tokens1) {
+      if (tokens2.includes(token)) {
+        commonTokens++;
+      }
+    }
+    
+    // Calcola similarità Jaccard
+    const totalUniqueTokens = new Set([...tokens1, ...tokens2]).size;
+    return totalUniqueTokens > 0 ? commonTokens / totalUniqueTokens : 0;
   }
 }
 

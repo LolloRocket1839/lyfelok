@@ -20,6 +20,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   const [processing, setProcessing] = useState(false);
   const [visible, setVisible] = useState(true);
   const transactionRouterRef = useRef<TransactionRouter | null>(null);
+  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
   
   const {
     handleExpenseSubmit,
@@ -57,6 +58,9 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     // Function to handle transactions based on type
     const handleTransaction = (transaction: any) => {
       console.log('Transaction notification received:', transaction);
+      
+      // Aggiungi la transazione alla cronologia
+      setTransactionHistory(prev => [transaction, ...prev].slice(0, 10));
       
       // Update UI based on transaction type
       switch(transaction.type) {
@@ -157,6 +161,25 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     }
   };
 
+  // Process feedback from user corrections (new feature)
+  const handleFeedback = (originalAnalysis: any, correctedCategory: string) => {
+    // Create corrected analysis
+    const correctedAnalysis = {
+      ...originalAnalysis,
+      category: correctedCategory,
+      metadata: {
+        ...originalAnalysis.metadata,
+        corrected: true
+      }
+    };
+    
+    // Store feedback for future improvements
+    nlpProcessor.storeFeedback(originalAnalysis, correctedAnalysis);
+    
+    // Show confirmation toast
+    showToast(`Categoria corretta salvata: ${correctedCategory}`);
+  };
+
   // Analyze input text and process transaction
   const handleAnalyze = () => {
     if (!inputText.trim() || !transactionRouterRef.current) return;
@@ -209,6 +232,13 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
           
           // Show toast notification based on transaction type
           showTransactionToast(routedTransaction);
+          
+          // Se ci sono categorie alternative, mostrale
+          if (transaction.alternativeCategories && transaction.alternativeCategories.length > 0) {
+            setTimeout(() => {
+              showAlternativesToast(transaction);
+            }, 2000);
+          }
         }
         
         setProcessing(false);
@@ -218,6 +248,37 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         showToast("Non riuscito a interpretare il testo", "destructive");
       }
     }, 300);
+  };
+
+  // Show suggestions for alternative categories
+  const showAlternativesToast = (transaction: any) => {
+    if (!transaction.alternativeCategories || transaction.alternativeCategories.length === 0) return;
+    
+    // Prendi solo le prime 2 alternative per non sovraccaricare l'utente
+    const alternatives = transaction.alternativeCategories.slice(0, 2);
+    
+    toast({
+      title: "Categorie alternative",
+      description: (
+        <div className="mt-2 space-y-2">
+          <p className="text-sm text-gray-500">
+            Forse intendevi una di queste categorie?
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {alternatives.map((category: string) => (
+              <button
+                key={category}
+                onClick={() => handleFeedback(transaction, category)}
+                className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+      ),
+      duration: 5000,
+    });
   };
 
   // Show a toast notification for the transaction
