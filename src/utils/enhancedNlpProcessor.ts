@@ -1,5 +1,5 @@
 
-import { Transaction } from './transactionRouter';
+import { Transaction, TransactionType } from './transactionRouter';
 
 interface Entity {
   amount: number | null;
@@ -549,12 +549,11 @@ export class EnhancedNlpProcessor {
     
     // Formatta la transazione nel formato atteso dal router
     const routedTransaction: Transaction = {
-      id: Date.now(),
-      type: transaction.type,
+      type: this.mapTypeToTransactionType(transaction.type),
       amount: transaction.amount || 0,
       date: transaction.date.toISOString().split('T')[0],
       description: transaction.description || 'Transazione',
-      category: transaction.category || null,
+      category: transaction.category || undefined,
       metadata: transaction.metadata
     };
     
@@ -566,6 +565,24 @@ export class EnhancedNlpProcessor {
     };
     
     return routingResult;
+  }
+  
+  /**
+   * Maps the internal type to TransactionType enum
+   */
+  private mapTypeToTransactionType(type: string): TransactionType {
+    switch(type) {
+      case 'SPESA':
+        return 'USCITA';
+      case 'ENTRATA':
+        return 'ENTRATA';
+      case 'INVESTIMENTO':
+        return 'INVESTIMENTO';
+      case 'AUMENTO_REDDITO':
+        return 'AUMENTO_REDDITO';
+      default:
+        return 'USCITA'; // Default fallback
+    }
   }
   
   /**
