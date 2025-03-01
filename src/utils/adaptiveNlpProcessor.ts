@@ -7,6 +7,8 @@ export interface NlpAnalysisResult {
   date: string;
   baselineAmount: number;
   confidence: 'high' | 'medium' | 'low';
+  needsFeedback?: boolean; // Aggiunto campo needsFeedback
+  unknownWords?: string[]; // Parole che potrebbero richiedere feedback
 }
 
 // Classe del processore NLP migliorato
@@ -16,6 +18,7 @@ class AdaptiveNlpProcessor {
   private userPreferences: Record<string, any> = {};
   private transactionHistory: any[] = [];
   private categoryMappings: Record<string, string> = {};
+  private pendingFeedbackWords: Array<{word: string, guessedCategory: string}> = []; // Parole in attesa di feedback
 
   // Imposta l'ID utente
   setUserId(id: string): void {
@@ -157,7 +160,9 @@ class AdaptiveNlpProcessor {
       category: baseResult.category,
       date: baseResult.date,
       baselineAmount: baseResult.baselineAmount,
-      confidence: baseResult.confidence
+      confidence: baseResult.confidence,
+      needsFeedback: baseResult.needsFeedback || false,
+      unknownWords: baseResult.unknownWords || []
     };
     
     // Memorizza questa transazione nella cronologia
@@ -166,6 +171,20 @@ class AdaptiveNlpProcessor {
       originalText: text,
       timestamp: new Date()
     });
+    
+    // Se ci sono parole sconosciute, aggiungiamole alle parole in attesa di feedback
+    if (result.needsFeedback && result.unknownWords && result.unknownWords.length > 0) {
+      result.unknownWords.forEach(word => {
+        // Verifica se la parola è già in attesa di feedback
+        const alreadyPending = this.pendingFeedbackWords.some(item => item.word === word);
+        if (!alreadyPending) {
+          this.pendingFeedbackWords.push({
+            word: word,
+            guessedCategory: result.category
+          });
+        }
+      });
+    }
     
     return result;
   }
@@ -307,6 +326,10 @@ class AdaptiveNlpProcessor {
         if (this.categoryMappings[possibleCategory]) {
           result.category = this.categoryMappings[possibleCategory];
           result.confidence = 'high';
+        } else {
+          // Se non conosciamo questa parola, potremmo richiedere feedback
+          result.unknownWords.push(possibleCategory);
+          result.needsFeedback = true;
         }
       } else {
         // Pattern: PAROLA + NUMERO (es: "pizza 30")
@@ -320,6 +343,10 @@ class AdaptiveNlpProcessor {
           if (this.categoryMappings[possibleCategory]) {
             result.category = this.categoryMappings[possibleCategory];
             result.confidence = 'high';
+          } else {
+            // Se non conosciamo questa parola, potremmo richiedere feedback
+            result.unknownWords.push(possibleCategory);
+            result.needsFeedback = true;
           }
           
           // Determina il tipo di transazione basato sulla parola
@@ -599,6 +626,34 @@ class AdaptiveNlpProcessor {
     });
     
     // Idealmente, questo feedback verrebbe salvato in un database per migliorare l'algoritmo
+  }
+
+  // NUOVI METODI PER GESTIRE IL FEEDBACK
+  
+  // Restituisce le parole in attesa di feedback
+  getPendingFeedbackWords(): Array<{word: string, guessedCategory: string}> {
+    return this.pendingFeedbackWords;
+  }
+
+  // Elabora il feedback dell'utente
+  processFeedback(word: string, suggestedCategory: string, isCorrect: boolean, correctCategory?: string): void {
+    console.log(`Feedback ricevuto per "${word}": categoria suggerita "${suggestedCategory}" è ${isCorrect ? 'corretta' : 'errata'}`);
+    
+    // Rimuovi la parola dalle parole in attesa
+    this.pendingFeedbackWords = this.pendingFeedbackWords.filter(item => item.word !== word);
+    
+    // Se la categoria suggerita è corretta, aggiungiamo questa parola al dizionario
+    if (isCorrect) {
+      this.categoryMappings[word.toLowerCase()] = suggestedCategory;
+      console.log(`Aggiunta mappatura: "${word}" -> "${suggestedCategory}"`);
+    } 
+    // Se è fornita una categoria corretta, aggiungiamo questa mappatura
+    else if (correctCategory) {
+      this.categoryMappings[word.toLowerCase()] = correctCategory;
+      console.log(`Corretta mappatura: "${word}" -> "${correctCategory}" (era "${suggestedCategory}")`);
+    }
+    
+    // In un'implementazione reale, salveremmo queste mappature personalizzate in un database
   }
 }
 
