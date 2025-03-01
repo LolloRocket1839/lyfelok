@@ -10,6 +10,7 @@ import { autoCategorize, addCustomRule, createMerchantPattern } from '@/utils/au
 import { categorizeInvestment } from '@/utils/investmentCategorization';
 import { transactionStore } from '@/utils/transactionStore';
 import { Transaction } from '@/utils/transactionRouter';
+import enhancedNlpProcessor from '@/utils/enhancedNlpProcessor';
 
 export type ExpenseItem = {
   id: number;
@@ -129,6 +130,9 @@ export function useLifestyleLock() {
       // Processing logic is now handled in ConversationalInterface component
       // This subscription is just for debugging and future extensibility
     };
+    
+    // Initialize the NLP processor
+    enhancedNlpProcessor.initialize();
     
     // Subscribe to ALL transaction types
     const unsubscribe = transactionStore.subscribe('ALL', handleTransaction);

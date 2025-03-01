@@ -1,9 +1,9 @@
-
 import { ExpenseItem, DepositItem } from '@/hooks/useLifestyleLock';
 import { NlpAnalysisResult } from '@/utils/adaptiveNlpProcessor';
 import { Home, ShoppingBag, Coffee, Car, Smartphone } from 'lucide-react';
 import { TransactionStore } from './transactionStore';
 import React from 'react';
+import enhancedNlpProcessor from './enhancedNlpProcessor';
 
 export type TransactionType = 'ENTRATA' | 'USCITA' | 'INVESTIMENTO' | 'AUMENTO_REDDITO';
 
@@ -32,9 +32,14 @@ const foodItemsDatabase = [
 ];
 
 // Converts NLP analysis result to a standardized transaction
-export const convertAnalysisToTransaction = (
-  analysis: NlpAnalysisResult
-): Transaction => {
+export function convertAnalysisToTransaction(analysis: any): Transaction {
+  console.log('Converting NLP analysis to transaction:', analysis);
+  
+  // Già nel formato corretto se proviene dall'enhancedNlpProcessor
+  if (analysis.type && analysis.description !== undefined) {
+    return analysis;
+  }
+  
   // Default date to today if not specified
   const date = analysis.date || new Date().toISOString().split('T')[0];
   

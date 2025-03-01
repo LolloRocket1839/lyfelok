@@ -1,10 +1,9 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { ArrowUp, MessageSquare } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
 import { useAuth } from '@/contexts/AuthContext';
-import nlpProcessor from '@/utils/adaptiveNlpProcessor';
+import enhancedNlpProcessor from '@/utils/enhancedNlpProcessor';
 import { transactionStore } from '@/utils/transactionStore';
 import { TransactionRouter, convertAnalysisToTransaction } from '@/utils/transactionRouter';
 import ElegantFeedbackUI from './ElegantFeedbackUI';
@@ -51,8 +50,8 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   // Initialize the NLP processor and transaction router when the user is available
   useEffect(() => {
     if (user?.id) {
-      nlpProcessor.setUserId(user.id);
-      nlpProcessor.initialize();
+      enhancedNlpProcessor.setUserId(user.id);
+      enhancedNlpProcessor.initialize();
       
       // Initialize transaction router if not already done
       if (!transactionRouterRef.current) {
@@ -279,8 +278,8 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     // Process the transaction
     setTimeout(() => {
       try {
-        // Use NLP processor to analyze text
-        const analysisResult = nlpProcessor.analyzeText(textToAnalyze);
+        // Use enhanced NLP processor to analyze text
+        const analysisResult = enhancedNlpProcessor.analyzeText(textToAnalyze);
         console.log('NLP Analysis result:', analysisResult);
         
         // Convert analysis to transaction
