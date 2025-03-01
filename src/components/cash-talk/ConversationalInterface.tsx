@@ -266,7 +266,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     );
   }
 
-  // Dynamic placeholder examples
+  // Dynamic placeholder examples based on your specifications
   const placeholders = [
     "Registra transazione...",
     "es: 30 pizza",
@@ -287,12 +287,12 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
 
   return (
     <div 
-      className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-4xl z-10"
+      className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[342px] z-10"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="flex items-center w-full bg-white rounded-lg shadow-sm border border-gray-200 h-[60px]">
+      <div className="flex items-center w-full bg-white rounded-full shadow-sm border border-gray-200 h-[40px]">
         <div className="flex items-center px-3 text-sm text-gray-500">
           <MessageSquare size={14} className="mr-1 text-gray-500" />
           <span className="text-xs font-medium">Cash Talk</span>
@@ -306,7 +306,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleInputKeydown}
             placeholder={placeholders[placeholderIndex]}
-            className="w-full px-3 py-2 bg-gray-50 border-0 focus:ring-0 text-sm text-gray-800 placeholder-gray-500"
+            className="w-full px-3 py-2 bg-transparent border-0 focus:ring-0 text-sm text-gray-800 placeholder-gray-500"
             disabled={processing}
           />
         </div>
@@ -314,13 +314,13 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         <button
           onClick={handleAnalyze}
           disabled={!inputText.trim() || processing}
-          className="flex items-center justify-center h-9 w-9 bg-[#06D6A0] text-white rounded-full mx-3 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#05c090] transition-colors"
+          className="flex items-center justify-center h-8 w-8 bg-[#06D6A0] text-white rounded-full mx-3 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#05c090] transition-colors"
           aria-label="Invia"
         >
           {processing ? (
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
           ) : (
-            <ArrowUp size={18} />
+            <ArrowUp size={16} />
           )}
         </button>
       </div>
