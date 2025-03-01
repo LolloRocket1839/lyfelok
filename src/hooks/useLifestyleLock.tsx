@@ -168,7 +168,18 @@ export function useLifestyleLock() {
 
   // Handle deposit add/edit
   const handleAddDeposit = () => {
-    if (!depositDate || !depositAmount || !depositCategory) return;
+    console.log("handleAddDeposit called with:", {
+      depositDate,
+      depositAmount,
+      depositDescription,
+      depositCategory,
+      editingDeposit
+    });
+
+    if (!depositDate || !depositAmount || !depositCategory) {
+      console.log("Missing required deposit fields");
+      return;
+    }
     
     if (editingDeposit) {
       // Update existing deposit
@@ -195,7 +206,8 @@ export function useLifestyleLock() {
         category: depositCategory
       };
       
-      setDeposits([...deposits, newDeposit]);
+      console.log("Adding new deposit:", newDeposit);
+      setDeposits(prevDeposits => [...prevDeposits, newDeposit]);
     }
     
     // Reset form fields
