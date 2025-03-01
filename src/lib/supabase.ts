@@ -69,14 +69,14 @@ export const userCategoryMappings = {
       for (const keyword of keywords) {
         if (userMappings[keyword]) {
           for (const [category, count] of Object.entries(userMappings[keyword])) {
-            scores[category] = (scores[category] || 0) + (count * 3);
+            scores[category] = (scores[category] || 0) + (Number(count) * 3);
           }
         }
         
         // Global mappings have normal weight
         if (globalMappings[keyword]) {
           for (const [category, count] of Object.entries(globalMappings[keyword])) {
-            scores[category] = (scores[category] || 0) + count;
+            scores[category] = (scores[category] || 0) + Number(count);
           }
         }
       }
