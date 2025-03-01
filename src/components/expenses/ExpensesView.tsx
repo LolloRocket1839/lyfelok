@@ -1,11 +1,12 @@
 
 import { motion } from 'framer-motion';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { ArrowUp, ChevronDown } from 'lucide-react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+  Progress,
+} from '@/components/ui/progress';
 import { fadeIn, slideUp } from '@/lib/animations';
 import { ExpenseItem } from '@/hooks/useLifestyleLock';
+import { useState } from 'react';
 
 interface ExpensesViewProps {
   expenses: ExpenseItem[];
@@ -26,6 +27,9 @@ const ExpensesView = ({
   setExpenseSpent,
   setExpenseBaseline
 }: ExpensesViewProps) => {
+  const [periodFilter, setPeriodFilter] = useState('Questo mese');
+  const [categoryFilter, setCategoryFilter] = useState('Tutte');
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('it-IT', {
       style: 'currency',
@@ -37,29 +41,46 @@ const ExpensesView = ({
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('it-IT', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+      day: 'numeric',
+      month: 'short'
     });
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 shadow-lg rounded-lg border border-slate-100">
-          <p className="text-sm font-medium text-slate-800">{`${label}`}</p>
-          {payload.map((entry: any, index: number) => (
-            <p 
-              key={`tooltip-${index}`} 
-              className={`text-sm font-medium ${entry.dataKey === 'baseline' ? 'text-indigo-600' : 'text-emerald-600'}`}
-            >
-              {`${entry.name}: ${formatCurrency(entry.value)}`}
-            </p>
-          ))}
-        </div>
-      );
+  // Calculate total budget and spent
+  const totalBudget = expenses.reduce((sum, expense) => sum + expense.baseline, 0);
+  const totalSpent = expenses.reduce((sum, expense) => sum + expense.spent, 0);
+  const spentPercentage = (totalSpent / totalBudget) * 100;
+
+  // Get category icon emoji
+  const getCategoryEmoji = (category: string) => {
+    switch(category.toLowerCase()) {
+      case 'alloggio':
+        return '🏠';
+      case 'cibo':
+        return '🍽️';
+      case 'intrattenimento':
+        return '🎬';
+      case 'trasporto':
+        return '🚗';
+      default:
+        return '📱';
     }
-    return null;
+  };
+
+  // Get category background color
+  const getCategoryColor = (category: string) => {
+    switch(category.toLowerCase()) {
+      case 'alloggio':
+        return { bg: '#F5F8FF', text: '#4D69FA' };
+      case 'cibo':
+        return { bg: '#FFF8F5', text: '#FA6E4D' };
+      case 'intrattenimento':
+        return { bg: '#F5FFFA', text: '#06D6A0' };
+      case 'trasporto':
+        return { bg: '#F5F8FF', text: '#4D69FA' };
+      default:
+        return { bg: '#F9F5FF', text: '#9D4DFA' };
+    }
   };
 
   const handleEditExpense = (expense: ExpenseItem) => {
@@ -71,107 +92,95 @@ const ExpensesView = ({
   };
 
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      exit="exit"
-      className="space-y-6"
-    >
-      <div className="flex justify-between items-center">
-        <motion.h2 variants={fadeIn} className="text-xl font-medium text-slate-800">Spese Mensili</motion.h2>
-        <motion.button 
-          variants={slideUp}
-          onClick={() => {
-            setEditingExpense(null);
-            setActiveModal('expense');
-          }}
-          className="bg-emerald-500 hover:bg-emerald-600 transition-colors duration-300 text-white px-4 py-2 rounded-full flex items-center shadow-sm"
-        >
-          <Plus size={16} className="mr-2" /> Aggiungi Spesa
-        </motion.button>
+    <div className="min-h-screen bg-white pb-20">
+      {/* Header */}
+      <div className="bg-[#12162B] h-[160px] flex items-end justify-center pb-8">
+        <h1 className="text-white text-[22px] font-medium">Spese</h1>
       </div>
-      
-      <motion.div 
-        variants={fadeIn}
-        className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-100"
-      >
-        <div className="p-5 border-b border-slate-100">
-          <h3 className="text-lg font-medium text-slate-800">Ripartizione Spese</h3>
-        </div>
-        <div className="p-5 h-[350px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={expenses}
-              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="category" stroke="#64748b" tick={{ fill: '#64748b' }} />
-              <YAxis stroke="#64748b" tick={{ fill: '#64748b' }} tickFormatter={(value) => `€${value}`} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar dataKey="baseline" name="Budget Base" fill="#818cf8" radius={[4, 4, 0, 0]} barSize={25} />
-              <Bar dataKey="spent" name="Spesa Effettiva" fill="#10b981" radius={[4, 4, 0, 0]} barSize={25} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </motion.div>
-      
-      <motion.div 
-        variants={fadeIn}
-        className="space-y-3"
-      >
-        {expenses.map((expense) => (
-          <motion.div
-            key={expense.id}
-            variants={slideUp}
-            className="bg-white border border-slate-100 rounded-xl p-4 flex justify-between items-center shadow-sm hover:shadow-md transition-shadow duration-300"
-          >
-            <div className="flex items-center">
-              <span className="mr-3 bg-slate-100 p-2 rounded-full">{expense.icon}</span>
-              <div>
-                <p className="font-medium text-slate-800">{expense.category}</p>
-                <div className="flex items-center space-x-2">
-                  <p className="text-sm text-slate-500">
-                    <span className={expense.spent > expense.baseline ? 'text-red-500 font-medium' : 'text-emerald-500 font-medium'}>
-                      {formatCurrency(expense.spent)}
-                    </span> 
-                    {' / '} 
-                    <span className="text-indigo-500 font-medium">{formatCurrency(expense.baseline)}</span>
-                  </p>
-                  {expense.spent <= expense.baseline && (
-                    <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                      Sotto budget
-                    </span>
-                  )}
-                  {expense.spent > expense.baseline && (
-                    <span className="text-xs px-2 py-0.5 bg-red-100 text-red-800 rounded-full">
-                      Sopra budget
-                    </span>
-                  )}
+
+      <div className="px-6 -mt-4">
+        {/* Budget Summary Card */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
+          className="bg-white rounded-xl shadow-sm p-4 max-w-[342px] mx-auto h-[90px] mb-5"
+        >
+          <div className="text-sm text-gray-500 font-medium mb-1">Budget Mensile</div>
+          <div className="flex items-baseline">
+            <span className="text-2xl font-semibold text-gray-800">{formatCurrency(totalSpent)}</span>
+            <span className="text-base text-gray-500 ml-2">/ {formatCurrency(totalBudget)}</span>
+          </div>
+          <Progress value={spentPercentage} className="h-[3px] mt-2" />
+        </motion.div>
+
+        {/* Filters */}
+        <motion.div
+          variants={fadeIn}
+          className="bg-[#F7F9FC] rounded-full max-w-[342px] mx-auto h-[45px] flex items-center justify-between px-4 mb-5"
+        >
+          <div className="flex items-center">
+            <button className="text-sm font-medium text-gray-700">{periodFilter}</button>
+            <ChevronDown size={16} className="ml-1 text-gray-500" />
+          </div>
+          <div className="h-4 w-[1px] bg-gray-300 mx-2"></div>
+          <div className="flex items-center">
+            <button className="text-sm font-medium text-gray-700">{categoryFilter}</button>
+            <ChevronDown size={16} className="ml-1 text-gray-500" />
+          </div>
+        </motion.div>
+        
+        {/* Expenses List */}
+        <motion.div 
+          variants={fadeIn}
+          className="space-y-3 max-w-[342px] mx-auto"
+        >
+          {expenses.map((expense) => {
+            const colors = getCategoryColor(expense.category);
+            return (
+              <motion.div
+                key={expense.id}
+                variants={slideUp}
+                className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between h-[72px] shadow-sm"
+                onClick={() => handleEditExpense(expense)}
+              >
+                <div className="flex items-center">
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center mr-3 text-lg"
+                    style={{ backgroundColor: colors.bg, color: colors.text }}
+                  >
+                    {getCategoryEmoji(expense.category)}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">{expense.category}</p>
+                    <p className="text-sm text-gray-400">
+                      {expense.date && formatDate(expense.date)}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  {expense.date && formatDate(expense.date)}
-                </p>
-              </div>
-            </div>
-            <div className="flex space-x-3">
-              <button 
-                onClick={() => handleEditExpense(expense)} 
-                className="text-slate-500 hover:text-slate-700 transition-colors p-1.5 hover:bg-slate-100 rounded-full"
-              >
-                <Edit2 size={16} />
-              </button>
-              <button 
-                onClick={() => setExpenses(expenses.filter(exp => exp.id !== expense.id))} 
-                className="text-slate-500 hover:text-red-500 transition-colors p-1.5 hover:bg-red-50 rounded-full"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </motion.div>
-    </motion.div>
+                <div className="text-base font-semibold text-gray-800">
+                  {formatCurrency(expense.spent)}
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
+
+      {/* Cash Talk Input (Fixed at bottom) */}
+      <div className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[342px]">
+        <div className="flex items-center w-full bg-white rounded-full border border-gray-200 h-[40px] px-4">
+          <input
+            type="text"
+            placeholder="Registra spesa..."
+            className="flex-1 bg-transparent border-0 focus:ring-0 text-sm text-gray-800 placeholder-gray-400 h-full"
+          />
+          <button className="flex items-center justify-center h-8 w-8 bg-[#06D6A0] text-white rounded-full">
+            <ArrowUp size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
