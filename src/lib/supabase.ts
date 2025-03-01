@@ -104,6 +104,61 @@ export const userCategoryMappings = {
       console.error('Error getting suggested category:', error);
       return { category: 'altro', confidence: 0.1 };
     }
+  },
+  
+  // Update a user's mappings with feedback
+  async updateMappings(description: string, categoryId: string, userId: string): Promise<boolean> {
+    try {
+      // Extract keywords from description
+      const keywords = description
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(word => word.length > 2);
+      
+      // Update each keyword
+      for (const keyword of keywords) {
+        // Check if mapping already exists for this user and keyword
+        const { data: existing } = await supabase
+          .from('user_category_mappings')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('keyword', keyword)
+          .maybeSingle();
+        
+        if (existing) {
+          // Update existing mapping
+          const categories = existing.categories || {};
+          categories[categoryId] = (categories[categoryId] || 0) + 1;
+          
+          await supabase
+            .from('user_category_mappings')
+            .update({ 
+              categories: categories,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existing.id);
+        } else {
+          // Create new mapping
+          const categories: Record<string, number> = {};
+          categories[categoryId] = 1;
+          
+          await supabase
+            .from('user_category_mappings')
+            .insert({
+              user_id: userId,
+              keyword: keyword,
+              categories: categories,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating user mappings:', error);
+      return false;
+    }
   }
 };
 
@@ -128,6 +183,52 @@ export const globalCategoryMappings = {
     } catch (error) {
       console.error('Error fetching global mappings:', error);
       return {};
+    }
+  },
+  
+  // Update global mappings with a new categorization
+  async updateGlobalMapping(keyword: string, categoryId: string): Promise<boolean> {
+    try {
+      // Check if global mapping already exists
+      const { data: existing } = await supabase
+        .from('global_category_mappings')
+        .select('*')
+        .eq('keyword', keyword)
+        .maybeSingle();
+      
+      if (existing) {
+        // Update existing mapping
+        const categories = existing.categories || {};
+        categories[categoryId] = (categories[categoryId] || 0) + 1;
+        
+        await supabase
+          .from('global_category_mappings')
+          .update({ 
+            categories: categories,
+            count: (existing.count || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+      } else {
+        // Create new mapping
+        const categories: Record<string, number> = {};
+        categories[categoryId] = 1;
+        
+        await supabase
+          .from('global_category_mappings')
+          .insert({
+            keyword: keyword,
+            categories: categories,
+            count: 1,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating global category mapping:', error);
+      return false;
     }
   }
 };
