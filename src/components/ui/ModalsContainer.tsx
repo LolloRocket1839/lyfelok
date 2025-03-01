@@ -216,21 +216,36 @@ const ModalsContainer = ({
     }
   }, [activeModal, depositDescription, depositCategory]);
   
-  // Add this new effect to ensure values are properly synced right before submitting
+  // Ensure values are properly synced right before submitting
   const handleDepositSubmit = () => {
-    // Make sure values are in sync before submission
-    if (investmentCategory) {
-      setDepositCategory(investmentCategory);
-    }
-    if (investmentDescription) {
-      setDepositDescription(investmentDescription);
-    }
+    console.log("handleDepositSubmit called with current values:", {
+      investmentDescription,
+      investmentCategory,
+      depositDescription,
+      depositCategory
+    });
     
-    // Add a small delay to ensure state updates have propagated
+    // First update the parent component state with our local state
+    setDepositCategory(investmentCategory);
+    setDepositDescription(investmentDescription);
+    
+    // Add a delay to ensure state updates have propagated
     setTimeout(() => {
-      console.log("Submitting with category:", depositCategory, "description:", depositDescription);
-      handleAddDeposit();
-    }, 10);
+      console.log("Submitting after sync with category:", depositCategory, "description:", depositDescription);
+      
+      // Double check we have a category
+      if (!depositCategory && investmentCategory) {
+        console.log("Using local category instead:", investmentCategory);
+        setDepositCategory(investmentCategory);
+        
+        // Use another timeout to ensure the category is set
+        setTimeout(() => {
+          handleAddDeposit();
+        }, 20);
+      } else {
+        handleAddDeposit();
+      }
+    }, 50);
   };
   
   // Get all investment categories

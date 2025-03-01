@@ -177,13 +177,17 @@ export function useLifestyleLock() {
     });
 
     if (!depositDate || !depositAmount || !depositCategory) {
-      console.log("Missing required deposit fields");
+      console.error("Missing required deposit fields", {
+        date: depositDate,
+        amount: depositAmount,
+        category: depositCategory
+      });
       return;
     }
     
     if (editingDeposit) {
       // Update existing deposit
-      setDeposits(deposits.map(dep => 
+      setDeposits(prevDeposits => prevDeposits.map(dep => 
         dep.id === editingDeposit 
           ? { 
               ...dep, 
@@ -211,10 +215,7 @@ export function useLifestyleLock() {
     }
     
     // Reset form fields
-    setDepositDate(getCurrentDate());
-    setDepositAmount('');
-    setDepositDescription('');
-    setDepositCategory('');
+    resetDepositForm();
     setActiveModal(null);
   };
 
