@@ -1,6 +1,9 @@
 
 import { ExpenseItem, DepositItem } from '@/hooks/useLifestyleLock';
 import { NlpAnalysisResult } from '@/utils/adaptiveNlpProcessor';
+import { Home, ShoppingBag, Coffee, Car, Smartphone } from 'lucide-react';
+import { TransactionStore } from './transactionStore';
+import React from 'react';
 
 export type TransactionType = 'ENTRATA' | 'USCITA' | 'INVESTIMENTO' | 'AUMENTO_REDDITO';
 
@@ -158,21 +161,19 @@ export class TransactionRouter {
 }
 
 // Helper function to determine icon based on category
-import { Home, ShoppingBag, Coffee, Car, Smartphone } from 'lucide-react';
-import { TransactionStore } from './transactionStore';
-
+// Changed to return icon component creator function instead of direct JSX
 function determineExpenseIcon(category: string): JSX.Element {
   const categoryLower = category.toLowerCase();
   
   if (categoryLower.includes('alloggio') || categoryLower.includes('casa') || categoryLower.includes('affitto')) {
-    return <Home size={18} />;
+    return React.createElement(Home, { size: 18 });
   } else if (categoryLower.includes('cibo') || categoryLower.includes('spesa') || categoryLower.includes('alimentari')) {
-    return <ShoppingBag size={18} />;
+    return React.createElement(ShoppingBag, { size: 18 });
   } else if (categoryLower.includes('intrattenimento') || categoryLower.includes('divertimento') || categoryLower.includes('svago')) {
-    return <Coffee size={18} />;
+    return React.createElement(Coffee, { size: 18 });
   } else if (categoryLower.includes('trasporto') || categoryLower.includes('auto') || categoryLower.includes('viaggio')) {
-    return <Car size={18} />;
+    return React.createElement(Car, { size: 18 });
   } else {
-    return <Smartphone size={18} />;
+    return React.createElement(Smartphone, { size: 18 });
   }
 }
