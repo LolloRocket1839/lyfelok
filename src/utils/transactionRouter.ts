@@ -16,7 +16,20 @@ export interface Transaction {
   date: string;
   metadata?: Record<string, any>;
   alternativeCategories?: string[]; // Categorie alternative suggerite
+  confidence?: number; // Livello di confidenza nella categorizzazione
 }
+
+// Database di alimenti e ingredienti
+const foodItemsDatabase = [
+  // Condimenti e spezie
+  'sale', 'pepe', 'origano', 'basilico', 'rosmarino', 'curry', 'paprika', 'cannella',
+  // Frutta e verdura
+  'mela', 'banana', 'pera', 'arancia', 'limone', 'pomodoro', 'lattuga', 'carota',
+  // Altri alimenti comuni
+  'pane', 'latte', 'uova', 'pasta', 'riso', 'formaggio', 'yogurt', 'burro',
+  'spesa', 'supermercato', 'cibo', 'alimentari', 'grocery', 'frutta', 'verdura',
+  'carne', 'pesce', 'forno', 'panetteria', 'pasticceria', 'dolce', 'zucchero'
+];
 
 // Converts NLP analysis result to a standardized transaction
 export const convertAnalysisToTransaction = (
@@ -43,13 +56,33 @@ export const convertAnalysisToTransaction = (
     // The actual logic for this detection would happen in the router
   }
   
+  // Check if the description contains food items and correct category if needed
+  let category = analysis.category;
+  let confidence = analysis.confidence === 'high' ? 0.9 : 
+                  analysis.confidence === 'medium' ? 0.7 : 0.5;
+  
+  if (category === 'Altro' || !category) {
+    const descriptionLower = (analysis.description || '').toLowerCase();
+    const words = descriptionLower.split(/\s+/);
+    
+    // Check if any word matches a food item
+    for (const word of words) {
+      if (foodItemsDatabase.includes(word)) {
+        category = 'Cibo';
+        confidence = 0.85; // High confidence but not highest
+        break;
+      }
+    }
+  }
+  
   return {
     type,
     amount: analysis.amount,
     description: analysis.description || analysis.unknownWords?.join(' ') || analysis.category,
-    category: analysis.category,
+    category: category,
     date,
     alternativeCategories: analysis.alternativeCategories,
+    confidence,
     metadata: {
       confidence: analysis.confidence,
       baselineAmount: analysis.baselineAmount,
@@ -67,6 +100,8 @@ export class TransactionRouter {
   private incomeIncreaseService: any;
   private unclassifiedService: any;
   private transactionStore: TransactionStore;
+  private userCategoryMappings: Map<string, Record<string, Record<string, number>>> = new Map();
+  private confidenceThreshold: number = 0.7;
   
   constructor(transactionStore: TransactionStore) {
     this.transactionStore = transactionStore;
@@ -114,6 +149,11 @@ export class TransactionRouter {
   }
   
   route(transaction: Transaction) {
+    // Apply enhanced categorization if needed
+    if ((transaction.category === 'Altro' || !transaction.category) && transaction.type === 'USCITA') {
+      this.enhanceTransactionCategory(transaction);
+    }
+    
     // Check for special case: could be income increase
     if (transaction.type === 'ENTRATA' && 
         transaction.amount > 0 && 
@@ -138,6 +178,84 @@ export class TransactionRouter {
       default:
         return this.unclassifiedService.add(transaction);
     }
+  }
+  
+  // Helper method to enhance transaction category with user feedback and food database
+  private enhanceTransactionCategory(transaction: Transaction) {
+    if (!transaction.description) return;
+    
+    const words = transaction.description.toLowerCase().split(/\s+/);
+    
+    // Check if words match food database
+    for (const word of words) {
+      if (foodItemsDatabase.includes(word)) {
+        transaction.category = 'Cibo';
+        transaction.confidence = 0.9; // High confidence
+        return;
+      }
+    }
+    
+    // If no match in food database, try user-specific mappings
+    // This would be expanded in a production environment to use user-specific data
+  }
+  
+  // Process user feedback for category correction
+  processFeedback(transactionId: number, selectedCategory: string, userId: string = 'default') {
+    const transaction = this.transactionStore.getTransactionById(transactionId);
+    if (!transaction) return false;
+    
+    // Update the transaction with the corrected category
+    const updatedTransaction = {
+      ...transaction,
+      category: selectedCategory,
+      metadata: {
+        ...transaction.metadata,
+        corrected: true,
+        originalCategory: transaction.category
+      }
+    };
+    
+    // Save the updated transaction
+    this.transactionStore.updateTransaction(updatedTransaction);
+    
+    // Update user category mappings for future transactions
+    this.updateUserCategoryMapping(transaction.description, selectedCategory, userId);
+    
+    return true;
+  }
+  
+  // Update user category mappings based on feedback
+  private updateUserCategoryMapping(description: string, category: string, userId: string) {
+    if (!description) return;
+    
+    // Get existing user mappings or create new ones
+    let userMappings = this.userCategoryMappings.get(userId) || {};
+    
+    // Extract keywords from description
+    const keywords = this.extractKeywords(description);
+    
+    // Update mappings for each keyword
+    for (const keyword of keywords) {
+      if (!userMappings[keyword]) {
+        userMappings[keyword] = {};
+      }
+      
+      // Increment counter for this category
+      userMappings[keyword][category] = (userMappings[keyword][category] || 0) + 1;
+    }
+    
+    // Save updated mappings
+    this.userCategoryMappings.set(userId, userMappings);
+    console.log(`Updated user category mappings for user ${userId}:`, userMappings);
+  }
+  
+  // Extract keywords from description
+  private extractKeywords(description: string): string[] {
+    // Extract significant words from description
+    return description
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(word => word.length > 2);
   }
   
   // Helper method to convert a transaction to an expense item

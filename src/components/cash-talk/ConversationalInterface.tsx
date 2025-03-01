@@ -21,6 +21,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   const [visible, setVisible] = useState(true);
   const transactionRouterRef = useRef<TransactionRouter | null>(null);
   const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
+  const [lastTransactionId, setLastTransactionId] = useState<number | null>(null);
   
   const {
     handleExpenseSubmit,
@@ -62,6 +63,9 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       // Aggiungi la transazione alla cronologia
       setTransactionHistory(prev => [transaction, ...prev].slice(0, 10));
       
+      // Store the transaction ID for potential feedback
+      setLastTransactionId(transactionHistory.length);
+      
       // Update UI based on transaction type
       switch(transaction.type) {
         case 'USCITA':
@@ -72,6 +76,13 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
           setExpenseDate(transaction.date);
           handleExpenseSubmit();
           resetExpenseForm();
+          
+          // Check if this category needs feedback (low confidence)
+          if (transaction.confidence && transaction.confidence < 0.7) {
+            setTimeout(() => {
+              showCategoryFeedbackToast(transaction);
+            }, 1000);
+          }
           break;
           
         case 'INVESTIMENTO':
@@ -123,7 +134,8 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     setExpenseDate, 
     setExpenseSpent, 
     setIncomeDate, 
-    setNewIncomeValue
+    setNewIncomeValue,
+    transactionHistory.length
   ]);
 
   // Handles the swipe to hide/show the interface
@@ -161,7 +173,76 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     }
   };
 
-  // Process feedback from user corrections (new feature)
+  // Show category feedback toast for low confidence categorizations
+  const showCategoryFeedbackToast = (transaction: any) => {
+    toast({
+      title: "Conferma categoria",
+      description: (
+        <div className="mt-2 space-y-2">
+          <p className="text-sm text-gray-500">
+            È corretto categorizzare "{transaction.description}" come "{transaction.category}"?
+          </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            <button
+              onClick={() => handleCategoryFeedback(transaction, 'Cibo')}
+              className="px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded-full transition-colors"
+            >
+              🍽️ Cibo
+            </button>
+            <button
+              onClick={() => handleCategoryFeedback(transaction, 'Alloggio')}
+              className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-full transition-colors"
+            >
+              🏠 Alloggio
+            </button>
+            <button
+              onClick={() => handleCategoryFeedback(transaction, 'Trasporto')}
+              className="px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-full transition-colors"
+            >
+              🚗 Trasporto
+            </button>
+            <button
+              onClick={() => handleCategoryFeedback(transaction, 'Intrattenimento')}
+              className="px-3 py-1 text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-full transition-colors"
+            >
+              🎭 Intrattenimento
+            </button>
+            <button
+              onClick={() => handleCategoryFeedback(transaction, 'Altro')}
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full transition-colors"
+            >
+              📦 Altro
+            </button>
+          </div>
+        </div>
+      ),
+      duration: 10000, // 10 seconds
+    });
+  };
+
+  // Process feedback from user corrections
+  const handleCategoryFeedback = (transaction: any, correctedCategory: string) => {
+    if (!transactionRouterRef.current || lastTransactionId === null) return;
+    
+    // Process the feedback using the transaction router
+    transactionRouterRef.current.processFeedback(
+      lastTransactionId, 
+      correctedCategory,
+      user?.id || 'default'
+    );
+    
+    // Update the expense category in the UI
+    if (transaction.type === 'USCITA') {
+      setExpenseCategory(correctedCategory);
+      handleExpenseSubmit();
+      resetExpenseForm();
+    }
+    
+    // Show confirmation toast
+    showToast(`Categoria aggiornata a: ${correctedCategory}`);
+  };
+
+  // Process feedback from user corrections (for alternative categories)
   const handleFeedback = (originalAnalysis: any, correctedCategory: string) => {
     // Create corrected analysis
     const correctedAnalysis = {

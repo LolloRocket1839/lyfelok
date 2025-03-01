@@ -19,6 +19,39 @@ export class TransactionStore {
     return transaction;
   }
   
+  // Update an existing transaction
+  updateTransaction(updatedTransaction: Transaction) {
+    const index = this.transactions.findIndex(t => 
+      t.description === updatedTransaction.description && 
+      t.amount === updatedTransaction.amount &&
+      t.date === updatedTransaction.date
+    );
+    
+    if (index !== -1) {
+      this.transactions[index] = updatedTransaction;
+      console.log('Transaction updated in store:', updatedTransaction);
+      
+      // Notify appropriate listeners
+      this.notify(updatedTransaction.type, updatedTransaction);
+      this.notify('UPDATE', updatedTransaction);
+      this.notify('ALL', updatedTransaction);
+      
+      return updatedTransaction;
+    }
+    
+    return null;
+  }
+  
+  // Get transaction by ID (simplified - in a real app, would use actual IDs)
+  getTransactionById(id: number): Transaction | null {
+    // In this simplified version, we just get by index
+    // In a real app, each transaction would have a unique ID
+    if (id >= 0 && id < this.transactions.length) {
+      return this.transactions[id];
+    }
+    return null;
+  }
+  
   // Get all transactions of a specific type
   getTransactions(type?: string): Transaction[] {
     if (!type || type === 'ALL') {
