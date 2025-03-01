@@ -5,6 +5,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
 import { useAuth } from '@/contexts/AuthContext';
 import nlpProcessor from '@/utils/adaptiveNlpProcessor';
+import { transactionStore } from '@/utils/transactionStore';
+import { TransactionRouter, convertAnalysisToTransaction } from '@/utils/transactionRouter';
 
 interface ConversationalInterfaceProps {
   viewSetter: (view: 'dashboard' | 'investments' | 'expenses' | 'projections') => void;
@@ -17,6 +19,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   const [inputText, setInputText] = useState('');
   const [processing, setProcessing] = useState(false);
   const [visible, setVisible] = useState(true);
+  const transactionRouterRef = useRef<TransactionRouter | null>(null);
   
   const {
     handleExpenseSubmit,
@@ -25,23 +28,101 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     setExpenseCategory,
     setExpenseSpent,
     setExpenseBaseline,
+    setExpenseDate,
     setDepositAmount,
     setDepositCategory,
     setDepositDescription,
+    setDepositDate,
     setNewIncomeValue,
+    setIncomeDate,
     resetExpenseForm,
     resetDepositForm,
   } = useLifestyleLock();
 
-  // Inizializza il processore NLP quando l'utente è disponibile
+  // Initialize the NLP processor and transaction router when the user is available
   useEffect(() => {
     if (user?.id) {
       nlpProcessor.setUserId(user.id);
       nlpProcessor.initialize();
+      
+      // Initialize transaction router if not already done
+      if (!transactionRouterRef.current) {
+        transactionRouterRef.current = new TransactionRouter(transactionStore);
+      }
     }
   }, [user]);
 
-  // Gestisce lo swipe per nascondere/mostrare l'interfaccia
+  // Subscribe to transaction notifications
+  useEffect(() => {
+    // Function to handle transactions based on type
+    const handleTransaction = (transaction: any) => {
+      console.log('Transaction notification received:', transaction);
+      
+      // Update UI based on transaction type
+      switch(transaction.type) {
+        case 'USCITA':
+          // Set expense data and submit
+          setExpenseCategory(transaction.category || 'Altro');
+          setExpenseSpent(transaction.amount.toString());
+          setExpenseBaseline((transaction.metadata?.baselineAmount || transaction.amount).toString());
+          setExpenseDate(transaction.date);
+          handleExpenseSubmit();
+          resetExpenseForm();
+          break;
+          
+        case 'INVESTIMENTO':
+          // Set deposit data and submit
+          setDepositAmount(transaction.amount.toString());
+          setDepositCategory(transaction.category || '');
+          setDepositDescription(transaction.description || '');
+          setDepositDate(transaction.date);
+          handleAddDeposit();
+          resetDepositForm();
+          break;
+          
+        case 'AUMENTO_REDDITO':
+          // Set new income data and submit
+          setNewIncomeValue(transaction.amount.toString());
+          setIncomeDate(transaction.date);
+          handleIncomeIncrease();
+          break;
+          
+        case 'ENTRATA':
+          // For now, we'll treat regular income similar to an income increase
+          setNewIncomeValue(transaction.amount.toString());
+          setIncomeDate(transaction.date);
+          handleIncomeIncrease();
+          break;
+          
+        default:
+          console.log('Unhandled transaction type:', transaction.type);
+      }
+    };
+    
+    // Subscribe to ALL transaction types
+    const unsubscribe = transactionStore.subscribe('ALL', handleTransaction);
+    
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [
+    handleAddDeposit, 
+    handleExpenseSubmit, 
+    handleIncomeIncrease, 
+    resetDepositForm, 
+    resetExpenseForm, 
+    setDepositAmount, 
+    setDepositCategory, 
+    setDepositDate, 
+    setDepositDescription, 
+    setExpenseBaseline, 
+    setExpenseCategory, 
+    setExpenseDate, 
+    setExpenseSpent, 
+    setIncomeDate, 
+    setNewIncomeValue
+  ]);
+
+  // Handles the swipe to hide/show the interface
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
@@ -76,15 +157,16 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     }
   };
 
+  // Analyze input text and process transaction
   const handleAnalyze = () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !transactionRouterRef.current) return;
     
-    // Salva il testo inserito e poi svuota l'input
+    // Save the text input and clear the field
     const textToAnalyze = inputText;
     setInputText('');
     setProcessing(true);
     
-    // Gestisci le navigazioni conversazionali
+    // Handle navigational commands first
     const lowerText = textToAnalyze.toLowerCase();
     
     if (lowerText.includes('dashboard') || lowerText.includes('panoramica') || lowerText.includes('home')) {
@@ -109,68 +191,68 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       return;
     }
     
-    // Simula un breve ritardo per l'analisi
+    // Process the transaction
     setTimeout(() => {
       try {
-        // Usa il processore NLP per analizzare il testo
-        const result = nlpProcessor.analyzeText(textToAnalyze);
+        // Use NLP processor to analyze text
+        const analysisResult = nlpProcessor.analyzeText(textToAnalyze);
+        console.log('NLP Analysis result:', analysisResult);
         
-        // Processa direttamente il risultato
-        handleTransaction(result);
+        // Convert analysis to transaction
+        const transaction = convertAnalysisToTransaction(analysisResult);
+        console.log('Converted transaction:', transaction);
+        
+        // Route transaction to the appropriate handler
+        if (transactionRouterRef.current) {
+          const routedTransaction = transactionRouterRef.current.route(transaction);
+          console.log('Routed transaction:', routedTransaction);
+          
+          // Show toast notification based on transaction type
+          showTransactionToast(routedTransaction);
+        }
+        
         setProcessing(false);
       } catch (error) {
-        console.error('Errore durante l\'analisi del testo:', error);
+        console.error('Error analyzing text:', error);
         setProcessing(false);
         showToast("Non riuscito a interpretare il testo", "destructive");
       }
     }, 300);
   };
 
+  // Show a toast notification for the transaction
   const showToast = (message: string, variant: 'default' | 'destructive' = 'default') => {
     toast({
       title: variant === 'destructive' ? "Errore" : "Cash Talk",
       description: message,
       variant: variant,
-      duration: 3000, // 3 secondi
+      duration: 3000, // 3 seconds
     });
   };
 
-  const handleTransaction = (analysis: any) => {
-    try {
-      const { type, amount, category, baselineAmount } = analysis;
-
-      // In base al tipo di transazione, utilizziamo le funzioni appropriate
-      if (type === 'spesa') {
-        setExpenseCategory(category);
-        setExpenseSpent(amount.toString());
-        setExpenseBaseline(baselineAmount.toString());
-        handleExpenseSubmit();
-        resetExpenseForm();
-        showToast(`Spesa: ${amount}€ (${category})`);
-      } else if (type === 'investimento') {
-        setDepositAmount(amount.toString());
-        setDepositCategory(category);
-        setDepositDescription(inputText);
-        handleAddDeposit();
-        resetDepositForm();
-        showToast(`Investimento: ${amount}€ (${category})`);
-      } else if (type === 'entrata') {
-        if (category.toLowerCase() === 'stipendio') {
-          setNewIncomeValue(amount.toString());
-          handleIncomeIncrease();
-          showToast(`Reddito aggiornato a ${amount}€`);
-        } else {
-          // Per altri tipi di entrate
-          showToast(`Entrata: ${amount}€ (${category})`);
-        }
-      }
-    } catch (error) {
-      console.error('Errore durante la conferma della transazione:', error);
-      showToast("Errore nella registrazione della transazione", "destructive");
+  // Show a toast notification based on transaction type
+  const showTransactionToast = (transaction: any) => {
+    const { type, amount, category } = transaction;
+    
+    switch(type) {
+      case 'USCITA':
+        showToast(`Spesa: ${amount}€ (${category || 'Altro'})`);
+        break;
+      case 'INVESTIMENTO':
+        showToast(`Investimento: ${amount}€ (${category || 'Generico'})`);
+        break;
+      case 'AUMENTO_REDDITO':
+        showToast(`Reddito aggiornato a ${amount}€`);
+        break;
+      case 'ENTRATA':
+        showToast(`Entrata: ${amount}€ (${category || 'Generico'})`);
+        break;
+      default:
+        showToast(`Transazione registrata: ${amount}€`);
     }
   };
 
-  // Se l'interfaccia è nascosta, mostra solo un piccolo indicatore
+  // Render a small indicator if the interface is hidden
   if (!visible) {
     return (
       <div 
@@ -183,6 +265,25 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       </div>
     );
   }
+
+  // Dynamic placeholder examples
+  const placeholders = [
+    "Registra transazione...",
+    "es: 30 pizza",
+    "es: affitto 800€",
+    "es: stipendio 1500€",
+    "es: investito 200€ in ETF",
+  ];
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  
+  // Rotate placeholders
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex(prev => (prev + 1) % placeholders.length);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [placeholders.length]);
 
   return (
     <div 
@@ -204,7 +305,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleInputKeydown}
-            placeholder="Registra transazione..."
+            placeholder={placeholders[placeholderIndex]}
             className="w-full px-3 py-2 bg-gray-50 border-0 focus:ring-0 text-sm text-gray-800 placeholder-gray-500"
             disabled={processing}
           />

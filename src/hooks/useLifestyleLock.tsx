@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Home, 
@@ -9,6 +8,8 @@ import {
 } from 'lucide-react';
 import { autoCategorize, addCustomRule, createMerchantPattern } from '@/utils/autoCategorization';
 import { categorizeInvestment } from '@/utils/investmentCategorization';
+import { transactionStore } from '@/utils/transactionStore';
+import { Transaction } from '@/utils/transactionRouter';
 
 export type ExpenseItem = {
   id: number;
@@ -117,6 +118,23 @@ export function useLifestyleLock() {
     const timer = setInterval(updateCurrentMonth, 86400000); // 24 hours in milliseconds
     
     return () => clearInterval(timer);
+  }, []);
+
+  // Add a transaction store subscriber to keep state in sync
+  useEffect(() => {
+    // Function to handle different transaction types
+    const handleTransaction = (transaction: Transaction) => {
+      console.log('useLifestyleLock received transaction:', transaction);
+      
+      // Processing logic is now handled in ConversationalInterface component
+      // This subscription is just for debugging and future extensibility
+    };
+    
+    // Subscribe to ALL transaction types
+    const unsubscribe = transactionStore.subscribe('ALL', handleTransaction);
+    
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   // Calculate totals
