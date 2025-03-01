@@ -1,3 +1,4 @@
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { modalAnimation, overlayAnimation } from '@/lib/animations';
 import { ModalType, ExpenseItem } from '@/hooks/useLifestyleLock';
@@ -215,6 +216,23 @@ const ModalsContainer = ({
     }
   }, [activeModal, depositDescription, depositCategory]);
   
+  // Add this new effect to ensure values are properly synced right before submitting
+  const handleDepositSubmit = () => {
+    // Make sure values are in sync before submission
+    if (investmentCategory) {
+      setDepositCategory(investmentCategory);
+    }
+    if (investmentDescription) {
+      setDepositDescription(investmentDescription);
+    }
+    
+    // Add a small delay to ensure state updates have propagated
+    setTimeout(() => {
+      console.log("Submitting with category:", depositCategory, "description:", depositDescription);
+      handleAddDeposit();
+    }, 10);
+  };
+  
   // Get all investment categories
   const investmentCategories = getAllCategories();
 
@@ -427,7 +445,7 @@ const ModalsContainer = ({
                 Annulla
               </button>
               <button 
-                onClick={handleAddDeposit} 
+                onClick={handleDepositSubmit} 
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-sm"
               >
                 {editingDeposit ? 'Aggiorna Investimento' : 'Aggiungi Investimento'}
