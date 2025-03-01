@@ -128,7 +128,7 @@ export const userCategoryMappings = {
         if (existing) {
           // Update existing mapping
           const categories = existing.categories || {};
-          categories[categoryId] = (categories[categoryId] || 0) + 1;
+          categories[categoryId] = (categories[categoryId] ? Number(categories[categoryId]) : 0) + 1;
           
           await supabase
             .from('user_category_mappings')
@@ -199,13 +199,13 @@ export const globalCategoryMappings = {
       if (existing) {
         // Update existing mapping
         const categories = existing.categories || {};
-        categories[categoryId] = (categories[categoryId] || 0) + 1;
+        categories[categoryId] = (categories[categoryId] ? Number(categories[categoryId]) : 0) + 1;
         
         await supabase
           .from('global_category_mappings')
           .update({ 
             categories: categories,
-            count: (existing.count || 0) + 1,
+            count: (existing.count ? Number(existing.count) : 0) + 1,
             updated_at: new Date().toISOString()
           })
           .eq('id', existing.id);
