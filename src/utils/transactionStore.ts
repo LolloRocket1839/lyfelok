@@ -1,6 +1,5 @@
-
 import { Transaction } from './transactionRouter';
-import { supabase, userCategoryMappings } from '@/lib/supabase';
+import { supabase, userCategoryMappings, globalCategoryMappings } from '@/lib/supabase';
 
 // Main category definitions
 export const mainCategories = [
@@ -298,7 +297,7 @@ export class TransactionStore {
       
       // 3. Update global mappings
       for (const keyword of keywords) {
-        await userCategoryMappings.updateGlobalMapping(keyword, selectedCategory);
+        await globalCategoryMappings.updateGlobalMapping(keyword, selectedCategory);
       }
       
       // 4. Update transaction with the correct category
@@ -351,14 +350,17 @@ export class TransactionStore {
       
       // Recovery attempt
       try {
-        const keywords = this.extractKeywords(transaction.description);
-        if (keywords.length > 0) {
-          await userCategoryMappings.forceSaveDirectMapping(
-            keywords[0], 
-            selectedCategory, 
-            userId
-          );
-          return { success: true, recovery: true };
+        const transaction = this.getTransactionById(transactionId);
+        if (transaction) {
+          const keywords = this.extractKeywords(transaction.description);
+          if (keywords.length > 0) {
+            await userCategoryMappings.forceSaveDirectMapping(
+              keywords[0], 
+              selectedCategory, 
+              userId
+            );
+            return { success: true, recovery: true };
+          }
         }
       } catch (recoveryError) {
         console.error('Recovery attempt failed:', recoveryError);
