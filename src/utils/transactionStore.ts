@@ -1,10 +1,25 @@
 
 import { Transaction } from './transactionRouter';
+import { supabase } from '@/lib/supabase';
+
+// Main category definitions
+export const mainCategories = [
+  { id: 'Cibo', label: 'Cibo', icon: '🍽️', color: '#4CAF50' },
+  { id: 'Alloggio', label: 'Casa', icon: '🏠', color: '#2196F3' },
+  { id: 'Trasporto', label: 'Trasporti', icon: '🚗', color: '#FF9800' },
+  { id: 'Intrattenimento', label: 'Svago', icon: '🎬', color: '#9C27B0' },
+  { id: 'Utenze', label: 'Utenze', icon: '💡', color: '#F44336' },
+  { id: 'Shopping', label: 'Shopping', icon: '👕', color: '#3F51B5' },
+  { id: 'Altro', label: 'Altro', icon: '📦', color: '#607D8B' }
+];
 
 // Observer pattern for real-time UI updates
 export class TransactionStore {
   private listeners: Map<string, Function[]> = new Map();
   private transactions: Transaction[] = [];
+  private feedbackRequestCount = 0;
+  private confidenceThreshold = 0.75;
+  private localMappingCache: Record<string, any> = {};
   
   // Add a transaction and notify listeners
   addTransaction(transaction: Transaction) {
@@ -94,6 +109,362 @@ export class TransactionStore {
   // Clear all transactions (useful for testing)
   clear() {
     this.transactions = [];
+  }
+
+  // Process a transaction with smart categorization
+  async processTransactionWithSmartCategories(transaction: Transaction, userId: string): Promise<{
+    transaction: Transaction;
+    requireFeedback: boolean;
+    suggestedCategories: any[];
+  }> {
+    try {
+      // Extract keywords from description
+      const keywords = this.extractKeywords(transaction.description);
+      
+      // Find best category match
+      const categoryMatch = await this.findBestCategoryMatch(keywords, userId);
+      
+      // Determine if feedback should be requested
+      const shouldRequestFeedback = this.shouldAskForFeedback(categoryMatch, userId);
+      
+      // Update transaction with the determined category
+      transaction.category = categoryMatch.category;
+      transaction.confidence = categoryMatch.confidence;
+      
+      // Return the processed transaction with metadata
+      return {
+        transaction,
+        requireFeedback: shouldRequestFeedback,
+        suggestedCategories: shouldRequestFeedback 
+          ? this.getSuggestedCategories(keywords)
+          : []
+      };
+    } catch (error) {
+      console.error('Error processing transaction with smart categories:', error);
+      
+      // Default to 'Altro' category with low confidence
+      transaction.category = 'Altro';
+      transaction.confidence = 0.1;
+      
+      return {
+        transaction,
+        requireFeedback: true,
+        suggestedCategories: mainCategories
+      };
+    }
+  }
+
+  // Find the best category match based on keywords
+  private async findBestCategoryMatch(keywords: string[], userId: string) {
+    // Results with scores for each category
+    const scores: Record<string, number> = {};
+    
+    // 1. Check user mappings (high priority)
+    const userMappings = await this.getUserMappings(userId);
+    
+    // 2. Check global mappings (medium priority)
+    const globalMappings = await this.getGlobalMappings();
+    
+    // Calculate scores by combining mappings
+    for (const keyword of keywords) {
+      // User mappings have more weight (3x)
+      if (userMappings[keyword]) {
+        for (const [category, count] of Object.entries(userMappings[keyword])) {
+          scores[category] = (scores[category] || 0) + (count as number * 3);
+        }
+      }
+      
+      // Global mappings have normal weight
+      if (globalMappings[keyword]) {
+        for (const [category, count] of Object.entries(globalMappings[keyword])) {
+          scores[category] = (scores[category] || 0) + (count as number);
+        }
+      }
+    }
+    
+    // Find category with highest score
+    let bestCategory = 'Altro';
+    let bestScore = 0;
+    
+    for (const [category, score] of Object.entries(scores)) {
+      if (score > bestScore) {
+        bestCategory = category;
+        bestScore = score;
+      }
+    }
+    
+    // Calculate normalized confidence score (0-1)
+    const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+    const confidence = totalScore > 0 ? bestScore / totalScore : 0;
+    
+    return {
+      category: bestCategory,
+      confidence,
+      scores
+    };
+  }
+
+  // Determine if feedback should be requested
+  private shouldAskForFeedback(categoryMatch: { confidence: number }, userId: string) {
+    // 1. If confidence is high, don't ask for feedback
+    if (categoryMatch.confidence >= this.confidenceThreshold) {
+      return false;
+    }
+    
+    // 2. Don't ask for feedback for too many consecutive transactions
+    if (this.feedbackRequestCount >= 3) {
+      this.feedbackRequestCount = 0;
+      return false;
+    }
+    
+    // 3. Balance learning and user experience
+    // If user has already provided many feedbacks, ask less frequently
+    const userFeedbackCount = this.getUserFeedbackCount(userId);
+    if (userFeedbackCount > 50 && Math.random() > 0.5) {
+      return false;
+    }
+    
+    // Increment feedback request counter
+    this.feedbackRequestCount++;
+    return true;
+  }
+
+  // Process user feedback for category correction
+  async processFeedback(transactionId: number, selectedCategory: string, userId: string) {
+    try {
+      const transaction = this.getTransactionById(transactionId);
+      if (!transaction) return { success: false, error: 'Transaction not found' };
+      
+      // Extract keywords from description
+      const keywords = this.extractKeywords(transaction.description);
+      
+      // 1. Update user mappings
+      await this.updateUserMappings(keywords, selectedCategory, userId);
+      
+      // 2. Update global mappings
+      await this.updateGlobalMappings(keywords, selectedCategory);
+      
+      // 3. Update transaction with the correct category
+      const updatedTransaction = {
+        ...transaction,
+        category: selectedCategory,
+        metadata: {
+          ...transaction.metadata,
+          corrected: true,
+          originalCategory: transaction.category
+        }
+      };
+      
+      // Save the updated transaction
+      this.updateTransaction(updatedTransaction);
+      
+      // Reset consecutive feedback counter
+      this.feedbackRequestCount = 0;
+      
+      return { success: true, updatedTransaction };
+      
+    } catch (error) {
+      console.error('Error processing feedback:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  // Update user category mappings in Supabase
+  private async updateUserMappings(keywords: string[], category: string, userId: string) {
+    for (const keyword of keywords) {
+      try {
+        // Get existing mapping or create new
+        const { data: existing } = await supabase
+          .from('user_category_mappings')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('keyword', keyword)
+          .maybeSingle();
+        
+        if (existing) {
+          // Update existing mapping
+          const categories = typeof existing.categories === 'string' 
+            ? JSON.parse(existing.categories) 
+            : existing.categories;
+          
+          categories[category] = (categories[category] || 0) + 1;
+          
+          await supabase
+            .from('user_category_mappings')
+            .update({ 
+              categories,
+              updated_at: new Date()
+            })
+            .eq('id', existing.id);
+        } else {
+          // Create new mapping
+          const categories: Record<string, number> = {};
+          categories[category] = 1;
+          
+          await supabase
+            .from('user_category_mappings')
+            .insert({
+              user_id: userId,
+              keyword,
+              categories,
+              created_at: new Date(),
+              updated_at: new Date()
+            });
+        }
+        
+        // Update local cache
+        if (!this.localMappingCache[userId]) {
+          this.localMappingCache[userId] = {};
+        }
+        if (!this.localMappingCache[userId][keyword]) {
+          this.localMappingCache[userId][keyword] = {};
+        }
+        this.localMappingCache[userId][keyword][category] = 
+          (this.localMappingCache[userId][keyword][category] || 0) + 1;
+        
+      } catch (error) {
+        console.error(`Error updating user mappings for keyword '${keyword}':`, error);
+      }
+    }
+  }
+
+  // Update global category mappings in Supabase
+  private async updateGlobalMappings(keywords: string[], category: string) {
+    for (const keyword of keywords) {
+      try {
+        // Get existing global mapping or create new
+        const { data: existing } = await supabase
+          .from('global_category_mappings')
+          .select('*')
+          .eq('keyword', keyword)
+          .maybeSingle();
+        
+        if (existing) {
+          // Update existing mapping
+          const categories = typeof existing.categories === 'string' 
+            ? JSON.parse(existing.categories) 
+            : existing.categories;
+          
+          categories[category] = (categories[category] || 0) + 1;
+          
+          await supabase
+            .from('global_category_mappings')
+            .update({ 
+              categories,
+              count: existing.count + 1,
+              updated_at: new Date()
+            })
+            .eq('id', existing.id);
+        } else {
+          // Create new mapping
+          const categories: Record<string, number> = {};
+          categories[category] = 1;
+          
+          await supabase
+            .from('global_category_mappings')
+            .insert({
+              keyword,
+              categories,
+              count: 1,
+              created_at: new Date(),
+              updated_at: new Date()
+            });
+        }
+      } catch (error) {
+        console.error(`Error updating global mappings for keyword '${keyword}':`, error);
+      }
+    }
+  }
+
+  // Get user-specific mappings from Supabase or cache
+  private async getUserMappings(userId: string): Promise<Record<string, Record<string, number>>> {
+    // Check if we have it in cache
+    if (this.localMappingCache[userId]) {
+      return this.localMappingCache[userId];
+    }
+    
+    try {
+      // Fetch from Supabase
+      const { data } = await supabase
+        .from('user_category_mappings')
+        .select('keyword, categories')
+        .eq('user_id', userId);
+      
+      // Format the data for easier access
+      const mappings: Record<string, Record<string, number>> = {};
+      
+      if (data && data.length > 0) {
+        data.forEach(item => {
+          const categories = typeof item.categories === 'string' 
+            ? JSON.parse(item.categories) 
+            : item.categories;
+          
+          mappings[item.keyword] = categories;
+        });
+      }
+      
+      // Save to cache
+      this.localMappingCache[userId] = mappings;
+      
+      return mappings;
+    } catch (error) {
+      console.error('Error fetching user mappings:', error);
+      return {};
+    }
+  }
+
+  // Get global mappings from Supabase
+  private async getGlobalMappings(): Promise<Record<string, Record<string, number>>> {
+    try {
+      const { data } = await supabase
+        .from('global_category_mappings')
+        .select('keyword, categories');
+      
+      // Format the data for easier access
+      const mappings: Record<string, Record<string, number>> = {};
+      
+      if (data && data.length > 0) {
+        data.forEach(item => {
+          const categories = typeof item.categories === 'string' 
+            ? JSON.parse(item.categories) 
+            : item.categories;
+          
+          mappings[item.keyword] = categories;
+        });
+      }
+      
+      return mappings;
+    } catch (error) {
+      console.error('Error fetching global mappings:', error);
+      return {};
+    }
+  }
+
+  // Get suggested categories based on keywords
+  private getSuggestedCategories(keywords: string[]): any[] {
+    // This is a simplified version, in a real app we'd use more sophisticated logic
+    // to determine which categories to suggest based on the keywords
+    
+    // For now, we'll just return all main categories
+    return mainCategories;
+  }
+
+  // Extract keywords from text
+  private extractKeywords(text: string): string[] {
+    // Remove stopwords, tokenize and filter
+    const stopwords = ['di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra', 'il', 'lo', 'la', 'i', 'gli', 'le'];
+    
+    return text
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !stopwords.includes(word));
+  }
+
+  // Get the count of feedback provided by user
+  private getUserFeedbackCount(userId: string): number {
+    // In a real app, this would be fetched from the database
+    // For now, return a dummy value
+    return 10;
   }
 }
 

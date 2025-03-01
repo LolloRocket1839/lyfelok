@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import nlpProcessor from '@/utils/adaptiveNlpProcessor';
 import { transactionStore } from '@/utils/transactionStore';
 import { TransactionRouter, convertAnalysisToTransaction } from '@/utils/transactionRouter';
+import ElegantFeedbackUI from './ElegantFeedbackUI';
+import { mainCategories } from '@/utils/transactionStore';
 
 interface ConversationalInterfaceProps {
   viewSetter: (view: 'dashboard' | 'investments' | 'expenses' | 'projections') => void;
@@ -22,6 +24,11 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   const transactionRouterRef = useRef<TransactionRouter | null>(null);
   const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
   const [lastTransactionId, setLastTransactionId] = useState<number | null>(null);
+  
+  // New states for feedback UI
+  const [feedbackNeeded, setFeedbackNeeded] = useState(false);
+  const [currentTransaction, setCurrentTransaction] = useState<any>(null);
+  const [suggestedCategories, setSuggestedCategories] = useState<any[]>([]);
   
   const {
     handleExpenseSubmit,
@@ -57,61 +64,35 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   // Subscribe to transaction notifications
   useEffect(() => {
     // Function to handle transactions based on type
-    const handleTransaction = (transaction: any) => {
+    const handleTransaction = async (transaction: any) => {
       console.log('Transaction notification received:', transaction);
       
-      // Aggiungi la transazione alla cronologia
+      // Add the transaction to history
       setTransactionHistory(prev => [transaction, ...prev].slice(0, 10));
       
       // Store the transaction ID for potential feedback
       setLastTransactionId(transactionHistory.length);
       
-      // Update UI based on transaction type
-      switch(transaction.type) {
-        case 'USCITA':
-          // Set expense data and submit
-          setExpenseCategory(transaction.category || 'Altro');
-          setExpenseSpent(transaction.amount.toString());
-          setExpenseBaseline((transaction.metadata?.baselineAmount || transaction.amount).toString());
-          setExpenseDate(transaction.date);
-          handleExpenseSubmit();
-          resetExpenseForm();
-          
-          // Check if this category needs feedback (low confidence)
-          if (transaction.confidence && transaction.confidence < 0.7) {
-            setTimeout(() => {
-              showCategoryFeedbackToast(transaction);
-            }, 1000);
-          }
-          break;
-          
-        case 'INVESTIMENTO':
-          // Set deposit data and submit
-          setDepositAmount(transaction.amount.toString());
-          setDepositCategory(transaction.category || '');
-          setDepositDescription(transaction.description || '');
-          setDepositDate(transaction.date);
-          handleAddDeposit();
-          resetDepositForm();
-          break;
-          
-        case 'AUMENTO_REDDITO':
-          // Set new income data and submit
-          setNewIncomeValue(transaction.amount.toString());
-          setIncomeDate(transaction.date);
-          handleIncomeIncrease();
-          break;
-          
-        case 'ENTRATA':
-          // For now, we'll treat regular income similar to an income increase
-          setNewIncomeValue(transaction.amount.toString());
-          setIncomeDate(transaction.date);
-          handleIncomeIncrease();
-          break;
-          
-        default:
-          console.log('Unhandled transaction type:', transaction.type);
+      // Process with smart categorization
+      if (user?.id && transaction.type === 'USCITA') {
+        const result = await transactionStore.processTransactionWithSmartCategories(
+          transaction,
+          user.id
+        );
+        
+        // If feedback is needed, show the feedback UI
+        if (result.requireFeedback) {
+          setCurrentTransaction(result.transaction);
+          setSuggestedCategories(result.suggestedCategories.length > 0 
+            ? result.suggestedCategories 
+            : mainCategories);
+          setFeedbackNeeded(true);
+          return; // Wait for user feedback before updating UI
+        }
       }
+      
+      // Update UI based on transaction type
+      updateUIBasedOnTransaction(transaction);
     };
     
     // Subscribe to ALL transaction types
@@ -135,8 +116,51 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     setExpenseSpent, 
     setIncomeDate, 
     setNewIncomeValue,
-    transactionHistory.length
+    transactionHistory.length,
+    user
   ]);
+
+  // Update UI based on transaction type
+  const updateUIBasedOnTransaction = (transaction: any) => {
+    switch(transaction.type) {
+      case 'USCITA':
+        // Set expense data and submit
+        setExpenseCategory(transaction.category || 'Altro');
+        setExpenseSpent(transaction.amount.toString());
+        setExpenseBaseline((transaction.metadata?.baselineAmount || transaction.amount).toString());
+        setExpenseDate(transaction.date);
+        handleExpenseSubmit();
+        resetExpenseForm();
+        break;
+        
+      case 'INVESTIMENTO':
+        // Set deposit data and submit
+        setDepositAmount(transaction.amount.toString());
+        setDepositCategory(transaction.category || '');
+        setDepositDescription(transaction.description || '');
+        setDepositDate(transaction.date);
+        handleAddDeposit();
+        resetDepositForm();
+        break;
+        
+      case 'AUMENTO_REDDITO':
+        // Set new income data and submit
+        setNewIncomeValue(transaction.amount.toString());
+        setIncomeDate(transaction.date);
+        handleIncomeIncrease();
+        break;
+        
+      case 'ENTRATA':
+        // For now, we'll treat regular income similar to an income increase
+        setNewIncomeValue(transaction.amount.toString());
+        setIncomeDate(transaction.date);
+        handleIncomeIncrease();
+        break;
+        
+      default:
+        console.log('Unhandled transaction type:', transaction.type);
+    }
+  };
 
   // Handles the swipe to hide/show the interface
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -173,92 +197,49 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     }
   };
 
-  // Show category feedback toast for low confidence categorizations
-  const showCategoryFeedbackToast = (transaction: any) => {
-    toast({
-      title: "Conferma categoria",
-      description: (
-        <div className="mt-2 space-y-2">
-          <p className="text-sm text-gray-500">
-            È corretto categorizzare "{transaction.description}" come "{transaction.category}"?
-          </p>
-          <div className="flex flex-wrap gap-2 mt-2">
-            <button
-              onClick={() => handleCategoryFeedback(transaction, 'Cibo')}
-              className="px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded-full transition-colors"
-            >
-              🍽️ Cibo
-            </button>
-            <button
-              onClick={() => handleCategoryFeedback(transaction, 'Alloggio')}
-              className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-full transition-colors"
-            >
-              🏠 Alloggio
-            </button>
-            <button
-              onClick={() => handleCategoryFeedback(transaction, 'Trasporto')}
-              className="px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded-full transition-colors"
-            >
-              🚗 Trasporto
-            </button>
-            <button
-              onClick={() => handleCategoryFeedback(transaction, 'Intrattenimento')}
-              className="px-3 py-1 text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-full transition-colors"
-            >
-              🎭 Intrattenimento
-            </button>
-            <button
-              onClick={() => handleCategoryFeedback(transaction, 'Altro')}
-              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-full transition-colors"
-            >
-              📦 Altro
-            </button>
-          </div>
-        </div>
-      ),
-      duration: 10000, // 10 seconds
-    });
+  // Handle category selection from feedback UI
+  const handleCategorySelection = async (categoryId: string) => {
+    if (!currentTransaction || lastTransactionId === null || !user?.id) return;
+    
+    try {
+      // Process the feedback using the transaction store
+      const result = await transactionStore.processFeedback(
+        lastTransactionId,
+        categoryId,
+        user.id
+      );
+      
+      if (result.success && result.updatedTransaction) {
+        // Update the UI with the new category
+        updateUIBasedOnTransaction(result.updatedTransaction);
+        
+        // Show confirmation toast
+        showToast(`Categoria aggiornata a: ${categoryId}`);
+      } else {
+        showToast("Non è stato possibile aggiornare la categoria", "destructive");
+      }
+    } catch (error) {
+      console.error('Error processing category feedback:', error);
+      showToast("Errore nell'aggiornamento della categoria", "destructive");
+    } finally {
+      // Reset feedback state
+      setFeedbackNeeded(false);
+      setCurrentTransaction(null);
+      setSuggestedCategories([]);
+    }
   };
 
-  // Process feedback from user corrections
-  const handleCategoryFeedback = (transaction: any, correctedCategory: string) => {
-    if (!transactionRouterRef.current || lastTransactionId === null) return;
-    
-    // Process the feedback using the transaction router
-    transactionRouterRef.current.processFeedback(
-      lastTransactionId, 
-      correctedCategory,
-      user?.id || 'default'
-    );
-    
-    // Update the expense category in the UI
-    if (transaction.type === 'USCITA') {
-      setExpenseCategory(correctedCategory);
-      handleExpenseSubmit();
-      resetExpenseForm();
+  // Handle dismissal of feedback UI
+  const handleDismissFeedback = () => {
+    if (currentTransaction) {
+      // If dismissed, use the original transaction
+      updateUIBasedOnTransaction(currentTransaction);
     }
     
-    // Show confirmation toast
-    showToast(`Categoria aggiornata a: ${correctedCategory}`);
-  };
-
-  // Process feedback from user corrections (for alternative categories)
-  const handleFeedback = (originalAnalysis: any, correctedCategory: string) => {
-    // Create corrected analysis
-    const correctedAnalysis = {
-      ...originalAnalysis,
-      category: correctedCategory,
-      metadata: {
-        ...originalAnalysis.metadata,
-        corrected: true
-      }
-    };
-    
-    // Store feedback for future improvements
-    nlpProcessor.storeFeedback(originalAnalysis, correctedAnalysis);
-    
-    // Show confirmation toast
-    showToast(`Categoria corretta salvata: ${correctedCategory}`);
+    // Reset feedback state
+    setFeedbackNeeded(false);
+    setCurrentTransaction(null);
+    setSuggestedCategories([]);
   };
 
   // Analyze input text and process transaction
@@ -313,13 +294,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
           
           // Show toast notification based on transaction type
           showTransactionToast(routedTransaction);
-          
-          // Se ci sono categorie alternative, mostrale
-          if (transaction.alternativeCategories && transaction.alternativeCategories.length > 0) {
-            setTimeout(() => {
-              showAlternativesToast(transaction);
-            }, 2000);
-          }
         }
         
         setProcessing(false);
@@ -329,37 +303,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         showToast("Non riuscito a interpretare il testo", "destructive");
       }
     }, 300);
-  };
-
-  // Show suggestions for alternative categories
-  const showAlternativesToast = (transaction: any) => {
-    if (!transaction.alternativeCategories || transaction.alternativeCategories.length === 0) return;
-    
-    // Prendi solo le prime 2 alternative per non sovraccaricare l'utente
-    const alternatives = transaction.alternativeCategories.slice(0, 2);
-    
-    toast({
-      title: "Categorie alternative",
-      description: (
-        <div className="mt-2 space-y-2">
-          <p className="text-sm text-gray-500">
-            Forse intendevi una di queste categorie?
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {alternatives.map((category: string) => (
-              <button
-                key={category}
-                onClick={() => handleFeedback(transaction, category)}
-                className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
-      ),
-      duration: 5000,
-    });
   };
 
   // Show a toast notification for the transaction
@@ -428,44 +371,56 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   }, [placeholders.length]);
 
   return (
-    <div 
-      className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[342px] z-10"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      <div className="flex items-center w-full bg-white rounded-full shadow-sm border border-gray-200 h-[40px]">
-        <div className="flex items-center px-3 text-sm text-gray-500">
-          <MessageSquare size={14} className="mr-1 text-gray-500" />
-          <span className="text-xs font-medium">Cash Talk</span>
+    <>
+      <div 
+        className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[342px] z-10"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="flex items-center w-full bg-white rounded-full shadow-sm border border-gray-200 h-[40px]">
+          <div className="flex items-center px-3 text-sm text-gray-500">
+            <MessageSquare size={14} className="mr-1 text-gray-500" />
+            <span className="text-xs font-medium">Cash Talk</span>
+          </div>
+          
+          <div className="flex-1 px-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={handleInputKeydown}
+              placeholder={placeholders[placeholderIndex]}
+              className="w-full px-3 py-2 bg-transparent border-0 focus:ring-0 text-sm text-gray-800 placeholder-gray-500"
+              disabled={processing}
+            />
+          </div>
+          
+          <button
+            onClick={handleAnalyze}
+            disabled={!inputText.trim() || processing}
+            className="flex items-center justify-center h-8 w-8 bg-[#06D6A0] text-white rounded-full mx-3 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#05c090] transition-colors"
+            aria-label="Invia"
+          >
+            {processing ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <ArrowUp size={16} />
+            )}
+          </button>
         </div>
-        
-        <div className="flex-1 px-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleInputKeydown}
-            placeholder={placeholders[placeholderIndex]}
-            className="w-full px-3 py-2 bg-transparent border-0 focus:ring-0 text-sm text-gray-800 placeholder-gray-500"
-            disabled={processing}
-          />
-        </div>
-        
-        <button
-          onClick={handleAnalyze}
-          disabled={!inputText.trim() || processing}
-          className="flex items-center justify-center h-8 w-8 bg-[#06D6A0] text-white rounded-full mx-3 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#05c090] transition-colors"
-          aria-label="Invia"
-        >
-          {processing ? (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <ArrowUp size={16} />
-          )}
-        </button>
       </div>
-    </div>
+      
+      {/* Render Feedback UI when needed */}
+      {feedbackNeeded && currentTransaction && (
+        <ElegantFeedbackUI
+          transaction={currentTransaction}
+          suggestedCategories={suggestedCategories}
+          onSelectCategory={handleCategorySelection}
+          onDismiss={handleDismissFeedback}
+        />
+      )}
+    </>
   );
 }
