@@ -180,7 +180,7 @@ const ModalsContainer = ({
   const handleInvestmentDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const description = e.target.value;
     setInvestmentDescription(description);
-    setDepositDescription(description); // Sincronizza con la proprietà depositDescription
+    setDepositDescription(description); // Sync with depositDescription property
     
     if (description.trim() !== '' && !editingDeposit) {
       const result = categorizeInvestment({ 
@@ -190,9 +190,16 @@ const ModalsContainer = ({
       
       if (result.category !== 'Non Categorizzato') {
         setInvestmentCategory(result.category);
-        setDepositCategory(result.category); // Sincronizza con la proprietà depositCategory
+        setDepositCategory(result.category); // Sync with depositCategory property
       }
     }
+  };
+
+  // Handle investment category change
+  const handleInvestmentCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const category = e.target.value;
+    setInvestmentCategory(category);
+    setDepositCategory(category); // Sync with depositCategory property
   };
 
   // Reset baselineModified flag when editing expense changes
@@ -200,7 +207,7 @@ const ModalsContainer = ({
     setBaselineModified(false);
   }, [editingExpense]);
 
-  // Sincronizza investmentDescription e investmentCategory con depositDescription e depositCategory quando si apre il modale
+  // Explicitly sync depositDescription and depositCategory to local state when the modal opens
   useEffect(() => {
     if (activeModal === 'deposit') {
       setInvestmentDescription(depositDescription);
@@ -390,10 +397,7 @@ const ModalsContainer = ({
                 <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
                 <select
                   value={investmentCategory}
-                  onChange={(e) => {
-                    setInvestmentCategory(e.target.value);
-                    setDepositCategory(e.target.value); // Sincronizza con depositCategory
-                  }}
+                  onChange={handleInvestmentCategoryChange}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
                 >
                   <option value="">Seleziona una categoria</option>
@@ -423,12 +427,7 @@ const ModalsContainer = ({
                 Annulla
               </button>
               <button 
-                onClick={() => {
-                  // Prima di chiamare handleAddDeposit, assicurati che i valori siano sincronizzati
-                  setDepositDescription(investmentDescription);
-                  setDepositCategory(investmentCategory);
-                  handleAddDeposit();
-                }} 
+                onClick={handleAddDeposit} 
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-sm"
               >
                 {editingDeposit ? 'Aggiorna Investimento' : 'Aggiungi Investimento'}
