@@ -108,6 +108,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_direct_mappings: {
+        Row: {
+          category: string
+          created_at: string | null
+          force_flag: boolean | null
+          id: string
+          keyword: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          force_flag?: boolean | null
+          id?: string
+          keyword: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          force_flag?: boolean | null
+          id?: string
+          keyword?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,6 +1,6 @@
 
 import { Transaction } from './transactionRouter';
-import { supabase } from '@/lib/supabase';
+import { supabase, userCategoryMappings } from '@/lib/supabase';
 
 // Main category definitions
 export const mainCategories = [
@@ -20,12 +20,14 @@ export class TransactionStore {
   private feedbackRequestCount = 0;
   private confidenceThreshold = 0.75;
   private localMappingCache: Record<string, any> = {};
+  private directMappingsCache: Map<string, Record<string, string>> = new Map();
+  private enableDebugLogging = true;
   
   // Add a transaction and notify listeners
   addTransaction(transaction: Transaction) {
     // Save to internal store (in a real app, this would go to a database)
     this.transactions.push(transaction);
-    console.log('Transaction added to store:', transaction);
+    this.logDebug('Transaction added to store:', transaction);
     
     // Notify appropriate listeners
     this.notify(transaction.type, transaction);
@@ -44,7 +46,7 @@ export class TransactionStore {
     
     if (index !== -1) {
       this.transactions[index] = updatedTransaction;
-      console.log('Transaction updated in store:', updatedTransaction);
+      this.logDebug('Transaction updated in store:', updatedTransaction);
       
       // Notify appropriate listeners
       this.notify(updatedTransaction.type, updatedTransaction);
@@ -120,8 +122,25 @@ export class TransactionStore {
     try {
       // Extract keywords from description
       const keywords = this.extractKeywords(transaction.description);
+      this.logDebug('Processing transaction with keywords:', keywords);
       
-      // Find best category match
+      // Check direct mappings first (highest priority)
+      const directMapping = await this.checkDirectMappings(keywords, userId);
+      
+      if (directMapping) {
+        // If direct mapping exists, use it with maximum confidence
+        this.logDebug('Found direct mapping:', directMapping);
+        transaction.category = directMapping.category;
+        transaction.confidence = 1.0; // Maximum confidence
+        
+        return {
+          transaction,
+          requireFeedback: false, // No feedback needed for direct mappings
+          suggestedCategories: []
+        };
+      }
+      
+      // If no direct mapping, find best category match using probabilistic approach
       const categoryMatch = await this.findBestCategoryMatch(keywords, userId);
       
       // Determine if feedback should be requested
@@ -151,6 +170,34 @@ export class TransactionStore {
         requireFeedback: true,
         suggestedCategories: mainCategories
       };
+    }
+  }
+
+  // Check for direct user mappings (highest priority)
+  private async checkDirectMappings(keywords: string[], userId: string): Promise<{keyword: string, category: string} | null> {
+    try {
+      // Get direct mappings from cache or load them
+      let directMappings = this.directMappingsCache.get(userId);
+      
+      if (!directMappings) {
+        directMappings = await userCategoryMappings.getDirectUserMappings(userId);
+        this.directMappingsCache.set(userId, directMappings);
+      }
+      
+      // Check each keyword for a direct mapping
+      for (const keyword of keywords) {
+        if (directMappings[keyword]) {
+          return {
+            keyword: keyword,
+            category: directMappings[keyword]
+          };
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error checking direct mappings:', error);
+      return null;
     }
   }
 
@@ -237,17 +284,28 @@ export class TransactionStore {
       
       // Extract keywords from description
       const keywords = this.extractKeywords(transaction.description);
+      this.logDebug('Processing feedback for keywords:', keywords);
       
-      // 1. Update user mappings
-      await this.updateUserMappings(keywords, selectedCategory, userId);
+      if (keywords.length === 0) {
+        return { success: false, error: 'No keywords extracted' };
+      }
       
-      // 2. Update global mappings
-      await this.updateGlobalMappings(keywords, selectedCategory);
+      // 1. Update direct mappings (highest priority)
+      const directUpdateResult = await userCategoryMappings.updateDirectMappings(keywords, selectedCategory, userId);
       
-      // 3. Update transaction with the correct category
+      // 2. Update user probabilistic mappings
+      await userCategoryMappings.updateMappings(transaction.description, selectedCategory, userId);
+      
+      // 3. Update global mappings
+      for (const keyword of keywords) {
+        await userCategoryMappings.updateGlobalMapping(keyword, selectedCategory);
+      }
+      
+      // 4. Update transaction with the correct category
       const updatedTransaction = {
         ...transaction,
         category: selectedCategory,
+        confidence: 1.0, // Maximum confidence for user selection
         metadata: {
           ...transaction.metadata,
           corrected: true,
@@ -261,10 +319,51 @@ export class TransactionStore {
       // Reset consecutive feedback counter
       this.feedbackRequestCount = 0;
       
-      return { success: true, updatedTransaction };
+      // Clear the direct mappings cache to force reload on next use
+      this.directMappingsCache.delete(userId);
+      
+      // Verify the update worked for at least the first keyword
+      if (keywords.length > 0) {
+        const verificationResult = await userCategoryMappings.verifyDirectMappingSaved(
+          keywords[0], 
+          selectedCategory, 
+          userId
+        );
+        
+        if (!verificationResult) {
+          this.logDebug('Verification failed, attempting recovery save');
+          await userCategoryMappings.forceSaveDirectMapping(
+            keywords[0], 
+            selectedCategory, 
+            userId
+          );
+        }
+      }
+      
+      return { 
+        success: true, 
+        updatedTransaction,
+        directUpdateResult 
+      };
       
     } catch (error) {
       console.error('Error processing feedback:', error);
+      
+      // Recovery attempt
+      try {
+        const keywords = this.extractKeywords(transaction.description);
+        if (keywords.length > 0) {
+          await userCategoryMappings.forceSaveDirectMapping(
+            keywords[0], 
+            selectedCategory, 
+            userId
+          );
+          return { success: true, recovery: true };
+        }
+      } catch (recoveryError) {
+        console.error('Recovery attempt failed:', recoveryError);
+      }
+      
       return { success: false, error: (error as Error).message };
     }
   }
@@ -465,6 +564,13 @@ export class TransactionStore {
     // In a real app, this would be fetched from the database
     // For now, return a dummy value
     return 10;
+  }
+  
+  // Debug logging function
+  private logDebug(message: string, data?: any): void {
+    if (this.enableDebugLogging) {
+      console.log(`[TransactionStore] ${message}`, data || '');
+    }
   }
 }
 
