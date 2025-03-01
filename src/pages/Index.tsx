@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
@@ -81,7 +80,6 @@ const Index = () => {
     getCurrentDate
   } = useLifestyleLock();
 
-  // Simulate loading effect
   useEffect(() => {
     setTimeout(() => {
       setLoading(false);
@@ -89,7 +87,6 @@ const Index = () => {
     }, 1800);
   }, []);
 
-  // Render each view based on state
   const renderActiveView = () => {
     switch (view) {
       case 'dashboard':
@@ -148,7 +145,7 @@ const Index = () => {
         {loading && <LoadingScreen />}
       </AnimatePresence>
 
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 pb-20">
         <HeaderNav 
           view={view}
           setView={setView}
@@ -156,22 +153,7 @@ const Index = () => {
           setActiveModal={setActiveModal}
         />
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
-          {/* Area conversazionale persistente */}
-          {showContent && (
-            <motion.div 
-              variants={fadeIn}
-              initial="hidden"
-              animate="visible"
-              className="mb-6 sticky top-0 z-10"
-            >
-              <ConversationalInterface viewSetter={setView} />
-            </motion.div>
-          )}
-        </div>
-        
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-6">
-          {/* Status banner */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-20">
           {showContent && (
             <motion.div 
               variants={fadeIn}
@@ -213,7 +195,6 @@ const Index = () => {
             </motion.div>
           )}
           
-          {/* Main content */}
           <AnimatePresence mode="wait">
             {showContent && (
               <motion.div
@@ -228,9 +209,12 @@ const Index = () => {
             )}
           </AnimatePresence>
         </main>
+        
+        {showContent && (
+          <ConversationalInterface viewSetter={setView} />
+        )}
       </div>
       
-      {/* Modals */}
       <ModalsContainer
         activeModal={activeModal}
         setActiveModal={setActiveModal}
