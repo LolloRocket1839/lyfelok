@@ -1,4 +1,3 @@
-
 import { motion, AnimatePresence } from 'framer-motion';
 import { modalAnimation, overlayAnimation } from '@/lib/animations';
 import { ModalType, ExpenseItem } from '@/hooks/useLifestyleLock';
@@ -37,6 +36,10 @@ interface ModalsContainerProps {
   setDepositAmount: (value: string) => void;
   depositAccount: string;
   setDepositAccount: (value: string) => void;
+  depositDescription: string;
+  setDepositDescription: (value: string) => void;
+  depositCategory: string;
+  setDepositCategory: (value: string) => void;
   handleAddDeposit: () => void;
   editingDeposit: number | null;
   resetDepositForm: () => void;
@@ -73,6 +76,10 @@ const ModalsContainer = ({
   setDepositAmount,
   depositAccount,
   setDepositAccount,
+  depositDescription,
+  setDepositDescription,
+  depositCategory,
+  setDepositCategory,
   handleAddDeposit,
   editingDeposit,
   resetDepositForm,
@@ -84,10 +91,6 @@ const ModalsContainer = ({
   const [investmentDescription, setInvestmentDescription] = useState('');
   const [investmentCategory, setInvestmentCategory] = useState('');
 
-  // Aggiungiamo le variabili mancanti per il funzionamento del componente
-  const [depositDescription, setDepositDescription] = useState('');
-  const [depositCategory, setDepositCategory] = useState('');
-
   const closeActiveModal = () => {
     if (activeModal === 'expense') {
       resetExpenseForm();
@@ -97,8 +100,6 @@ const ModalsContainer = ({
       resetDepositForm();
       setInvestmentDescription('');
       setInvestmentCategory('');
-      setDepositDescription('');
-      setDepositCategory('');
     }
     setActiveModal(null);
   };
@@ -179,7 +180,7 @@ const ModalsContainer = ({
   const handleInvestmentDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const description = e.target.value;
     setInvestmentDescription(description);
-    setDepositDescription(description);
+    setDepositDescription(description); // Sincronizza con la proprietà depositDescription
     
     if (description.trim() !== '' && !editingDeposit) {
       const result = categorizeInvestment({ 
@@ -189,7 +190,7 @@ const ModalsContainer = ({
       
       if (result.category !== 'Non Categorizzato') {
         setInvestmentCategory(result.category);
-        setDepositCategory(result.category);
+        setDepositCategory(result.category); // Sincronizza con la proprietà depositCategory
       }
     }
   };
@@ -198,6 +199,14 @@ const ModalsContainer = ({
   useEffect(() => {
     setBaselineModified(false);
   }, [editingExpense]);
+
+  // Sincronizza investmentDescription e investmentCategory con depositDescription e depositCategory quando si apre il modale
+  useEffect(() => {
+    if (activeModal === 'deposit') {
+      setInvestmentDescription(depositDescription);
+      setInvestmentCategory(depositCategory);
+    }
+  }, [activeModal, depositDescription, depositCategory]);
   
   // Get all investment categories
   const investmentCategories = getAllCategories();
@@ -362,10 +371,29 @@ const ModalsContainer = ({
               </div>
               
               <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Descrizione/Nome</label>
+                <input
+                  type="text"
+                  value={investmentDescription}
+                  onChange={handleInvestmentDescriptionChange}
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  placeholder="es. ETF MSCI World, BTP 10 anni, Azioni Enel"
+                />
+                {investmentDescription && investmentCategory && !editingDeposit && (
+                  <p className="mt-1 text-xs text-emerald-600">
+                    Auto-categorizzato come: {investmentCategory}
+                  </p>
+                )}
+              </div>
+              
+              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
                 <select
-                  value={depositCategory}
-                  onChange={(e) => setDepositCategory(e.target.value)}
+                  value={investmentCategory}
+                  onChange={(e) => {
+                    setInvestmentCategory(e.target.value);
+                    setDepositCategory(e.target.value); // Sincronizza con depositCategory
+                  }}
                   className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
                 >
                   <option value="">Seleziona una categoria</option>
@@ -373,22 +401,6 @@ const ModalsContainer = ({
                     <option key={category} value={category}>{category}</option>
                   ))}
                 </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Descrizione/Nome</label>
-                <input
-                  type="text"
-                  value={depositDescription}
-                  onChange={handleInvestmentDescriptionChange}
-                  className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                  placeholder="es. ETF MSCI World, BTP 10 anni, Azioni Enel"
-                />
-                {depositDescription && depositCategory && !editingDeposit && (
-                  <p className="mt-1 text-xs text-emerald-600">
-                    Auto-categorizzato come: {depositCategory}
-                  </p>
-                )}
               </div>
               
               <div>
@@ -411,7 +423,12 @@ const ModalsContainer = ({
                 Annulla
               </button>
               <button 
-                onClick={handleAddDeposit} 
+                onClick={() => {
+                  // Prima di chiamare handleAddDeposit, assicurati che i valori siano sincronizzati
+                  setDepositDescription(investmentDescription);
+                  setDepositCategory(investmentCategory);
+                  handleAddDeposit();
+                }} 
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-sm"
               >
                 {editingDeposit ? 'Aggiorna Investimento' : 'Aggiungi Investimento'}

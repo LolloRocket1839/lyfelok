@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
@@ -240,6 +241,10 @@ const Index = () => {
         setDepositAmount={setDepositAmount}
         depositAccount={depositAccount}
         setDepositAccount={setDepositAccount}
+        depositDescription={depositDescription}
+        setDepositDescription={setDepositDescription}
+        depositCategory={depositCategory}
+        setDepositCategory={setDepositCategory}
         handleAddDeposit={handleAddDeposit}
         editingDeposit={editingDeposit}
         resetDepositForm={resetDepositForm}
