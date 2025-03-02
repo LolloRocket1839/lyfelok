@@ -1,6 +1,13 @@
 
 import { Transaction, TransactionType } from '../transactionRouter';
-import { Entity, ClassificationResult } from './types';
+import { Entity } from './types';
+
+export interface ClassificationResult {
+  type: 'SPESA' | 'ENTRATA' | 'INVESTIMENTO' | 'AUMENTO_REDDITO';
+  confidence: number;
+  subcategory: string | null;
+  allScores: Record<string, number>;
+}
 
 /**
  * Arricchisce la transazione con informazioni aggiuntive
@@ -85,23 +92,5 @@ export function mapTypeToTransactionType(type: string): TransactionType {
       return 'AUMENTO_REDDITO';
     default:
       return 'USCITA'; // Default fallback
-  }
-}
-
-/**
- * Determina la destinazione appropriata per la transazione
- */
-export function determineDestination(transaction: any): { module: string, action: string } {
-  switch (transaction.type) {
-    case 'SPESA':
-      return { module: 'expenses', action: 'add' };
-    case 'ENTRATA':
-      return { module: 'income', action: 'add' };
-    case 'INVESTIMENTO':
-      return { module: 'investments', action: 'add' };
-    case 'AUMENTO_REDDITO':
-      return { module: 'income', action: 'update_base' };
-    default:
-      return { module: 'transactions', action: 'add' };
   }
 }

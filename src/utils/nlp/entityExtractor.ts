@@ -1,51 +1,52 @@
 
 import { Entity } from './types';
+import { extractDateFromText } from './textProcessor';
 
-/**
- * Estrae entità significative dall'input (importi, date, descrizioni)
- */
-export function extractEntities(input: string): Entity {
+// Function to extract entities from processed text
+export function extractEntities(text: string): Entity {
   const entities: Entity = {
     amount: null,
     currency: 'EUR', // Default
-    date: new Date(), // Default a oggi
+    date: new Date(), // Default to today
     description: '',
     keywords: []
   };
   
-  // Estrai importo
-  const amountMatch = input.match(/\b(\d+(?:\.\d{1,2})?)\b/);
+  // Extract amount - look for numbers optionally followed by € or euro
+  const amountMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:€|euro|eur)?/i);
   if (amountMatch) {
-    entities.amount = parseFloat(amountMatch[1]);
-    // Rimuovi l'importo per l'elaborazione successiva
-    input = input.replace(amountMatch[0], '');
+    entities.amount = parseFloat(amountMatch[1].replace(',', '.'));
+    // Remove the amount for further processing
+    text = text.replace(amountMatch[0], '');
   }
   
-  // Estrai valuta
-  const currencyMatches: Record<string, string> = {
-    'euro': 'EUR',
-    'dollari': 'USD',
-    'sterline': 'GBP'
-  };
-  
-  for (const [term, code] of Object.entries(currencyMatches)) {
-    if (input.includes(term)) {
-      entities.currency = code;
-      // Rimuovi il termine valuta
-      input = input.replace(term, '');
-      break;
-    }
+  // Extract currency
+  if (text.includes('euro') || text.includes('€')) {
+    entities.currency = 'EUR';
+  } else if (text.includes('dollari') || text.includes('$')) {
+    entities.currency = 'USD';
   }
   
-  // Estrai parole chiave significative (stop words rimosse)
-  const stopWords = ['il', 'lo', 'la', 'i', 'gli', 'le', 'di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra'];
-  entities.keywords = input.split(' ')
-    .filter(word => word.length > 2) // Parole troppo brevi ignorate
-    .filter(word => !stopWords.includes(word)) // Rimuovi stop words
-    .filter(word => !/^\d+$/.test(word)); // Rimuovi numeri puri
+  // Extract date
+  const dateString = extractDateFromText(text);
+  if (dateString) {
+    entities.date = new Date(dateString);
+  }
   
-  // Usa le parole rimanenti come descrizione
-  entities.description = input.trim();
+  // Extract description and keywords
+  // Remove common words for better keyword extraction
+  const stopWords = ['ho', 'speso', 'pagato', 'per', 'il', 'la', 'i', 'gli', 'le', 'di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra'];
+  
+  // Split text into words
+  const words = text.toLowerCase().split(/\s+/);
+  
+  // Filter out stop words and words shorter than 3 characters
+  entities.keywords = words.filter(word => 
+    word.length > 2 && !stopWords.includes(word) && !/^\d+$/.test(word)
+  );
+  
+  // Set the cleaned description
+  entities.description = text.trim();
   
   return entities;
 }

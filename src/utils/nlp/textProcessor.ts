@@ -1,6 +1,6 @@
 
-import { EntityType } from './types';
-import { knowledgeBase } from './knowledgeBase';
+import { Entity } from './types';
+import { knowledgeBaseData } from './knowledgeBase';
 
 // Function to preprocess text before entity extraction
 export const textProcessor = (text: string): string => {
@@ -30,8 +30,8 @@ export const normalizeCategory = (category: string): string => {
   const normalizedCategory = category.toLowerCase().trim();
   
   // Check if the category exists in knowledge base
-  for (const [key, synonyms] of Object.entries(knowledgeBase.categories)) {
-    if (synonyms.includes(normalizedCategory)) {
+  for (const [key, categoryDef] of Object.entries(knowledgeBaseData.categories)) {
+    if (categoryDef.tags && categoryDef.tags.includes(normalizedCategory)) {
       return key;
     }
   }

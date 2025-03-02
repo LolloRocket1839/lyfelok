@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -39,7 +40,16 @@ const EnhancedCashTalkDialog: React.FC<EnhancedCashTalkDialogProps> = ({ onClose
       const nlpResult = await enhancedNlpProcessor(inputValue);
       
       if (nlpResult) {
-        setInterpretationData(nlpResult);
+        // Transform the nlpResult into the format expected by TransactionInterpretation
+        const interpretationData = {
+          type: nlpResult.type, 
+          amount: nlpResult.amount,
+          category: nlpResult.category || 'Altro',
+          description: nlpResult.description,
+          date: nlpResult.date
+        };
+        
+        setInterpretationData({...nlpResult, ...interpretationData});
         setShowInterpretation(true);
       } else {
         toast({
@@ -75,9 +85,9 @@ const EnhancedCashTalkDialog: React.FC<EnhancedCashTalkDialogProps> = ({ onClose
       setInterpretationData(null);
       
       // Redirect to the appropriate view based on transaction type
-      if (interpretationData.type === 'investment') {
+      if (interpretationData.type === 'INVESTIMENTO') {
         viewSetter('investments');
-      } else if (interpretationData.type === 'expense') {
+      } else if (interpretationData.type === 'USCITA' || interpretationData.type === 'SPESA') {
         viewSetter('expenses');
       }
     } catch (error) {

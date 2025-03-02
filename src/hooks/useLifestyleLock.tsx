@@ -131,9 +131,6 @@ export function useLifestyleLock() {
       // This subscription is just for debugging and future extensibility
     };
     
-    // Initialize the NLP processor
-    enhancedNlpProcessor.initialize();
-    
     // Subscribe to ALL transaction types
     const unsubscribe = transactionStore.subscribe('ALL', handleTransaction);
     

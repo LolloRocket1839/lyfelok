@@ -28,10 +28,14 @@ export const TransactionInterpretation: React.FC<TransactionInterpretationProps>
   const getTypeColor = () => {
     switch (type) {
       case 'expense':
+      case 'USCITA':
+      case 'SPESA':
         return 'text-red-600';
       case 'investment':
+      case 'INVESTIMENTO':
         return 'text-blue-600';
       case 'income':
+      case 'ENTRATA':
         return 'text-green-600';
       default:
         return 'text-gray-600';
@@ -41,11 +45,17 @@ export const TransactionInterpretation: React.FC<TransactionInterpretationProps>
   const getTypeLabel = () => {
     switch (type) {
       case 'expense':
+      case 'USCITA':
+      case 'SPESA':
         return 'Spesa';
       case 'investment':
+      case 'INVESTIMENTO':
         return 'Investimento';
       case 'income':
+      case 'ENTRATA':
         return 'Entrata';
+      case 'AUMENTO_REDDITO':
+        return 'Aumento di Reddito';
       default:
         return 'Transazione';
     }
