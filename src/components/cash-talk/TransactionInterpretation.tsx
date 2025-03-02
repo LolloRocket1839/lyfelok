@@ -1,6 +1,6 @@
 
 import { motion } from 'framer-motion';
-import { Check, ShoppingBag, ArrowDown, TrendingUp, Calendar, Tag, Receipt, Store, CreditCard } from 'lucide-react';
+import { Check, ShoppingBag, ArrowDown, TrendingUp, Calendar, Tag, Receipt, Store, CreditCard, Image } from 'lucide-react';
 import { Transaction } from '@/utils/transactionRouter';
 
 interface TransactionInterpretationProps {
@@ -45,6 +45,36 @@ export default function TransactionInterpretation({ transaction }: TransactionIn
     return null;
   };
 
+  // Get receipt quality badge
+  const getReceiptQualityBadge = () => {
+    if (!isFromReceipt) return null;
+    
+    const confidence = transaction.metadata?.confidence || '';
+    
+    if (confidence.toLowerCase().includes('alta')) {
+      return (
+        <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+          <Check size={12} />
+          Alta affidabilità
+        </span>
+      );
+    } else if (confidence.toLowerCase().includes('media')) {
+      return (
+        <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 flex items-center gap-1">
+          <Image size={12} />
+          Media affidabilità
+        </span>
+      );
+    } else {
+      return (
+        <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-800 flex items-center gap-1">
+          <Receipt size={12} />
+          Bassa affidabilità
+        </span>
+      );
+    }
+  };
+
   return (
     <motion.div
       className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm"
@@ -61,9 +91,7 @@ export default function TransactionInterpretation({ transaction }: TransactionIn
               Scontrino
             </span>
           )}
-          <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">
-            {transaction.metadata?.confidence || 'Alta affidabilità'}
-          </span>
+          {getReceiptQualityBadge()}
         </div>
       </div>
       
@@ -129,6 +157,15 @@ export default function TransactionInterpretation({ transaction }: TransactionIn
               <p className="text-sm text-slate-500">Metodo di Pagamento</p>
               <p className="font-medium text-slate-900">{transaction.metadata.paymentMethod}</p>
             </div>
+          </div>
+        )}
+        
+        {isFromReceipt && transaction.metadata?.rawText && (
+          <div className="md:col-span-2 mt-2 pt-2 border-t border-slate-100">
+            <p className="text-xs text-slate-500 mb-1">Testo riconosciuto:</p>
+            <p className="text-xs font-mono bg-slate-50 p-2 rounded overflow-auto max-h-20">
+              {transaction.metadata.rawText}
+            </p>
           </div>
         )}
       </div>

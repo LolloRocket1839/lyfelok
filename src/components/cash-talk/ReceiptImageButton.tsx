@@ -3,7 +3,8 @@ import React, { useState, useRef } from 'react';
 import { Camera, Upload, X, Check, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import enhancedNlpProcessor from '@/utils/enhancedNlpProcessor';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import CameraCapture from './CameraCapture';
 import receiptProcessor from '@/utils/receiptProcessor';
 
 interface ReceiptImageButtonProps {
@@ -15,9 +16,17 @@ const ReceiptImageButton: React.FC<ReceiptImageButtonProps> = ({ onProcessComple
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = useState(false);
   const [processingStage, setProcessingStage] = useState<'idle' | 'loading' | 'analyzing' | 'success' | 'error'>('idle');
+  const [showCameraDialog, setShowCameraDialog] = useState(false);
 
   const handleButtonClick = () => {
-    fileInputRef.current?.click();
+    // Show options for camera or file upload
+    const useCameraConfirm = window.confirm("Use camera for receipt? Click 'Cancel' to upload an image file instead.");
+    
+    if (useCameraConfirm) {
+      setShowCameraDialog(true);
+    } else {
+      fileInputRef.current?.click();
+    }
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,6 +100,29 @@ const ReceiptImageButton: React.FC<ReceiptImageButtonProps> = ({ onProcessComple
     }
   };
 
+  // Handle camera capture result
+  const handleCameraCapture = (receiptText: string) => {
+    setShowCameraDialog(false);
+    
+    // Process the captured text
+    if (receiptText && receiptText.trim() !== '') {
+      // Notify success
+      toast({
+        title: "Receipt captured!",
+        description: "Successfully extracted data from the receipt.",
+      });
+      
+      // Send the extracted text to the parent component
+      onProcessComplete(receiptText);
+    } else {
+      toast({
+        title: "Capture failed",
+        description: "Couldn't extract data from the captured image.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Helper function to read file as data URL
   const readFileAsDataURL = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -158,7 +190,7 @@ const ReceiptImageButton: React.FC<ReceiptImageButtonProps> = ({ onProcessComple
         className="rounded-full bg-white hover:bg-gray-100 text-gray-700"
         onClick={handleButtonClick}
         disabled={processing}
-        title="Upload receipt image"
+        title="Capture or upload receipt"
       >
         {getButtonIcon()}
       </Button>
@@ -171,6 +203,16 @@ const ReceiptImageButton: React.FC<ReceiptImageButtonProps> = ({ onProcessComple
         capture="environment"
         className="hidden"
       />
+      
+      {/* Camera Dialog */}
+      <Dialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
+        <DialogContent className="p-0 sm:max-w-md">
+          <CameraCapture 
+            onCapture={handleCameraCapture}
+            onClose={() => setShowCameraDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
