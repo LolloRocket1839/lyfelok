@@ -1,183 +1,116 @@
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
+import { Check, Edit, AlertCircle } from 'lucide-react';
+import { NlpAnalysisResult } from '@/utils/adaptiveNlpProcessor';
 
-interface TransactionInterpretationProps {
-  analysis: any;
-  expanded?: boolean;
+export interface TransactionInterpretationProps {
+  analysis: NlpAnalysisResult | any;
+  onConfirm?: () => void;
+  onEdit?: () => void;
 }
 
-// Color mapping for different transaction types
-const transactionColors = {
-  'USCITA': { bg: '#FEE2E2', text: '#EF4444', icon: '💸' },
-  'ENTRATA': { bg: '#DCFCE7', text: '#22C55E', icon: '💰' },
-  'INVESTIMENTO': { bg: '#E0F2FE', text: '#3B82F6', icon: '📈' },
-  'AUMENTO_REDDITO': { bg: '#FEF9C3', text: '#EAB308', icon: '🚀' },
-};
-
-// Category icon mapping
-const categoryIcons: Record<string, string> = {
-  'Cibo': '🍽️',
-  'Casa': '🏠',
-  'Alloggio': '🏠',
-  'Trasporti': '🚗',
-  'Trasporto': '🚗',
-  'Svago': '🎭',
-  'Intrattenimento': '🎭',
-  'Salute': '⚕️',
-  'Farmacia': '💊',
-  'Istruzione': '📚',
-  'Educazione': '📚',
-  'Bollette': '📝',
-  'Utenze': '📝',
-  'Shopping': '🛍️',
-  'Vestiti': '👕',
-  'Elettronica': '📱',
-  'Altro': '📦',
-  'Stipendio': '💼',
-  'Bonus': '🎁',
-  'Regali': '🎁',
-  'Investimenti': '📊',
-  'Azioni': '📈',
-  'ETF': '📊',
-  'Criptovalute': '₿',
-  'Obbligazioni': '📜',
-  'Immobili': '🏢'
-};
-
-// Fallback icon
-const defaultIcon = '📋';
-
-const TransactionInterpretation: React.FC<TransactionInterpretationProps> = ({ analysis, expanded = false }) => {
-  // Safety check for null or undefined analysis
-  if (!analysis) {
-    return null;
-  }
-  
-  const { type, amount, category, description, date, confidence } = analysis;
-  
-  // Get style based on transaction type or use default
-  const style = transactionColors[type] || { bg: '#F3F4F6', text: '#6B7280', icon: '❓' };
-  
-  // Get category icon or default
-  const getIcon = (cat: string) => {
-    if (!cat) return defaultIcon;
-    
-    // Check for exact match
-    if (categoryIcons[cat]) return categoryIcons[cat];
-    
-    // Check for partial match
-    const partialMatch = Object.keys(categoryIcons).find(key => 
-      cat.toLowerCase().includes(key.toLowerCase())
-    );
-    
-    return partialMatch ? categoryIcons[partialMatch] : defaultIcon;
-  };
-  
-  // Format date for display
-  const formatDate = (dateStr: string): string => {
-    if (!dateStr) return '';
-    
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('it-IT', { 
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric'
-      });
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return dateStr.toString();
+const TransactionInterpretation: React.FC<TransactionInterpretationProps> = ({ 
+  analysis, 
+  onConfirm, 
+  onEdit 
+}) => {
+  // Determine transaction type label
+  const getTransactionTypeLabel = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'entrata': return 'Entrata';
+      case 'uscita': return 'Spesa';
+      case 'investimento': return 'Investimento';
+      default: return 'Transazione';
     }
   };
-  
-  // Return different layouts based on expanded state
-  return expanded ? (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="p-4 rounded-lg mb-4"
-      style={{ backgroundColor: style.bg }}
-    >
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex items-center">
-          <div 
-            className="w-10 h-10 rounded-full flex items-center justify-center mr-3 text-lg"
-            style={{ backgroundColor: 'white', color: style.text }}
-          >
-            {style.icon}
-          </div>
+
+  // Format amount with sign based on transaction type
+  const getFormattedAmount = () => {
+    const amount = Math.abs(analysis.amount || 0);
+    const type = analysis.type?.toLowerCase();
+    
+    if (type === 'uscita') {
+      return `-${formatCurrency(amount)}`;
+    } else if (type === 'entrata') {
+      return `+${formatCurrency(amount)}`;
+    } else {
+      return formatCurrency(amount);
+    }
+  };
+
+  // Get confidence indicator
+  const getConfidenceIndicator = () => {
+    const confidence = analysis.confidence || 0;
+    
+    if (confidence > 0.8) {
+      return <span className="text-green-500 flex items-center"><Check size={16} className="mr-1" /> Alta affidabilità</span>;
+    } else if (confidence > 0.5) {
+      return <span className="text-yellow-500 flex items-center"><AlertCircle size={16} className="mr-1" /> Media affidabilità</span>;
+    } else {
+      return <span className="text-red-500 flex items-center"><AlertCircle size={16} className="mr-1" /> Bassa affidabilità</span>;
+    }
+  };
+
+  return (
+    <Card className="p-4 animate-in fade-in slide-in-from-bottom-5 duration-300 mb-4 bg-white border shadow-md">
+      <div className="flex flex-col">
+        <div className="flex justify-between items-start mb-2">
           <div>
-            <h3 className="font-semibold" style={{ color: style.text }}>
-              {type === 'USCITA' ? 'Spesa' : 
-               type === 'ENTRATA' ? 'Entrata' : 
-               type === 'INVESTIMENTO' ? 'Investimento' : 
-               'Transazione'}
-            </h3>
-            <p className="text-sm text-gray-600">
-              {formatDate(date)}
-            </p>
+            <h3 className="font-medium text-lg">{getTransactionTypeLabel(analysis.type)}</h3>
+            <p className="text-sm text-gray-500">{analysis.description || 'Nessuna descrizione'}</p>
+          </div>
+          <div className="text-xl font-bold">
+            {getFormattedAmount()}
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-bold" style={{ color: style.text }}>
-            {formatCurrency(Math.abs(amount), 'EUR')}
-          </p>
-          {confidence && (
-            <div className="flex items-center justify-end mt-1">
-              <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full rounded-full" 
-                  style={{ 
-                    width: `${confidence * 100}%`,
-                    backgroundColor: confidence > 0.7 ? '#22C55E' : confidence > 0.4 ? '#EAB308' : '#EF4444'
-                  }}
-                ></div>
-              </div>
-              <span className="text-xs text-gray-500 ml-1">{Math.round(confidence * 100)}%</span>
+        
+        <div className="flex flex-col space-y-1 mt-1 mb-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Categoria:</span>
+            <span className="font-medium">{analysis.category || 'Non classificata'}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Data:</span>
+            <span>{analysis.date || new Date().toLocaleDateString()}</span>
+          </div>
+          {analysis.confidence !== undefined && (
+            <div className="flex justify-between text-sm items-center">
+              <span className="text-gray-500">Affidabilità:</span>
+              {getConfidenceIndicator()}
             </div>
           )}
         </div>
-      </div>
-      
-      {(category || description) && (
-        <div className="mt-2 border-t border-white/20 pt-2">
-          {category && (
-            <div className="flex items-center text-sm mb-1">
-              <span className="mr-2">{getIcon(category)}</span>
-              <span className="font-medium text-gray-700">{category}</span>
-            </div>
+        
+        <div className="flex justify-end space-x-2 mt-2">
+          {onEdit && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onEdit}
+              className="flex items-center"
+            >
+              <Edit size={16} className="mr-1" />
+              Modifica
+            </Button>
           )}
-          {description && (
-            <p className="text-sm text-gray-700">{description}</p>
+          
+          {onConfirm && (
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={onConfirm}
+              className="flex items-center"
+            >
+              <Check size={16} className="mr-1" />
+              Conferma
+            </Button>
           )}
         </div>
-      )}
-    </motion.div>
-  ) : (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="flex items-center justify-between p-3 rounded-lg mb-2"
-      style={{ backgroundColor: style.bg }}
-    >
-      <div className="flex items-center">
-        <span className="text-lg mr-2">{style.icon}</span>
-        <span className="font-medium" style={{ color: style.text }}>
-          {category || (
-            type === 'USCITA' ? 'Spesa' : 
-            type === 'ENTRATA' ? 'Entrata' : 
-            type === 'INVESTIMENTO' ? 'Investimento' : 
-            'Transazione'
-          )}
-        </span>
       </div>
-      <span className="font-bold" style={{ color: style.text }}>
-        {formatCurrency(Math.abs(amount), 'EUR')}
-      </span>
-    </motion.div>
+    </Card>
   );
 };
 
