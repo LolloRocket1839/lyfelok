@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
@@ -13,11 +14,14 @@ import { useMobile } from '@/hooks/useMobile';
 import { useAnimationControls } from 'framer-motion';
 import { cn } from '@/utils/cn';
 
+// Import the EnhancedCashTalkDialog component
+import EnhancedCashTalkDialog from './EnhancedCashTalkDialog';
+
 interface ConversationalInterfaceProps {
   viewSetter: (view: 'dashboard' | 'investments' | 'expenses' | 'projections') => void;
 }
 
-const ConversationalInterface = ({ viewSetter }: { viewSetter: (view: string) => void }) => {
+const ConversationalInterface = ({ viewSetter }: ConversationalInterfaceProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -49,7 +53,7 @@ const ConversationalInterface = ({ viewSetter }: { viewSetter: (view: string) =>
         });
       }, 1000);
     }
-  }, []);
+  }, [isOpen, controls]);
   
   const openDialog = () => {
     setIsTransitioning(true);
@@ -93,7 +97,7 @@ const ConversationalInterface = ({ viewSetter }: { viewSetter: (view: string) =>
       initial={{ y: 100, opacity: 0 }}
       animate={controls}
       className={cn(
-        "fixed bottom-4 right-4 overflow-hidden shadow-xl rounded-xl bg-white border border-gray-200 z-50",
+        "fixed bottom-1/2 left-1/2 transform -translate-x-1/2 translate-y-1/2 overflow-hidden shadow-xl rounded-xl bg-white border border-gray-200 z-50",
         isMinimized ? "w-[180px] h-[60px]" : "w-full md:w-[450px]",
         isMobile && !isMinimized ? "w-full bottom-0 right-0 left-0 rounded-t-xl rounded-b-none" : ""
       )}

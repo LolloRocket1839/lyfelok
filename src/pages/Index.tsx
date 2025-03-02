@@ -212,7 +212,7 @@ const Index = () => {
         </main>
         
         {showContent && (
-          <ConversationalInterface viewSetter={setView} />
+          <ConversationalInterface viewSetter={(newView) => setView(newView as any)} />
         )}
       </div>
       

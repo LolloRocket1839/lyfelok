@@ -1,142 +1,169 @@
 
-import { Entity, ClassificationResult } from './types';
-import { NlpKnowledgeBase } from './knowledgeBase';
+import { EntityType, TransactionType } from './types';
+import { textProcessor } from './textProcessor';
+import { knowledgeBase } from './knowledgeBase';
 
-/**
- * Classifica il tipo di transazione tra SPESA, ENTRATA, INVESTIMENTO, AUMENTO_REDDITO
- */
-export function classifyTransactionType(
-  input: string, 
-  entities: Entity, 
-  knowledgeBase: NlpKnowledgeBase,
-  getUserHistoryScoreFn: (entities: Entity, category: string) => number
-): ClassificationResult {
-  // Calcola punteggi per ogni categoria
-  const scores: Record<string, number> = {
-    SPESA: calculateCategoryScore(input, entities, 'expenses', knowledgeBase, getUserHistoryScoreFn),
-    ENTRATA: calculateCategoryScore(input, entities, 'income', knowledgeBase, getUserHistoryScoreFn),
-    INVESTIMENTO: calculateCategoryScore(input, entities, 'investments', knowledgeBase, getUserHistoryScoreFn),
-    AUMENTO_REDDITO: calculateCategoryScore(input, entities, 'incomeIncrease', knowledgeBase, getUserHistoryScoreFn)
-  };
+// Transaction type classifier
+export const classifyTransactionType = (text: string): 'expense' | 'income' | 'investment' | 'unknown' => {
+  const lowercaseText = text.toLowerCase();
   
-  // Normalizza i punteggi
-  const total = Object.values(scores).reduce((sum, score) => sum + score, 0);
-  const normalizedScores: Record<string, number> = {};
-  
-  for (const [category, score] of Object.entries(scores)) {
-    normalizedScores[category] = total > 0 ? score / total : 0;
+  // Check for expense indicators
+  if (
+    lowercaseText.includes('speso') ||
+    lowercaseText.includes('pagato') ||
+    lowercaseText.includes('acquistato') ||
+    lowercaseText.includes('comprato') ||
+    lowercaseText.includes('spesa')
+  ) {
+    return 'expense';
   }
   
-  // Trova la categoria con il punteggio più alto
-  let maxCategory: 'SPESA' | 'ENTRATA' | 'INVESTIMENTO' | 'AUMENTO_REDDITO' = 'SPESA'; // Default
-  let maxScore = 0;
-  
-  for (const [category, score] of Object.entries(normalizedScores)) {
-    if (score > maxScore) {
-      maxScore = score;
-      maxCategory = category as any;
-    }
+  // Check for income indicators
+  if (
+    lowercaseText.includes('ricevuto') ||
+    lowercaseText.includes('guadagnato') ||
+    lowercaseText.includes('incassato') ||
+    lowercaseText.includes('stipendio') ||
+    lowercaseText.includes('entrata')
+  ) {
+    return 'income';
   }
   
-  // Determina la sottocategoria (se applicabile)
-  let subcategory = null;
-  
-  if (maxCategory === 'SPESA') {
-    subcategory = determineSubcategory(
-      input, 
-      entities, 
-      knowledgeBase.getCategory('expenses').categories
-    );
-  } else if (maxCategory === 'INVESTIMENTO') {
-    subcategory = determineSubcategory(
-      input, 
-      entities, 
-      knowledgeBase.getCategory('investments').instruments
-    );
-  } else if (maxCategory === 'ENTRATA') {
-    subcategory = determineSubcategory(
-      input, 
-      entities, 
-      knowledgeBase.getCategory('income').sources
-    );
+  // Check for investment indicators
+  if (
+    lowercaseText.includes('investito') ||
+    lowercaseText.includes('azioni') ||
+    lowercaseText.includes('borsa') ||
+    lowercaseText.includes('etf') ||
+    lowercaseText.includes('fondo')
+  ) {
+    return 'investment';
   }
   
-  return {
-    type: maxCategory,
-    confidence: maxScore,
-    subcategory: subcategory,
-    allScores: normalizedScores
-  };
-}
+  return 'unknown';
+};
 
-/**
- * Calcola il punteggio di una categoria in base all'input e alle entità
- */
-export function calculateCategoryScore(
-  input: string, 
-  entities: Entity, 
-  category: string,
-  knowledgeBase: NlpKnowledgeBase,
-  getUserHistoryScoreFn: (entities: Entity, category: string) => number
-): number {
-  let score = 0;
-  const categoryData = knowledgeBase.getCategory(category);
+// Category classifier
+export const classifyCategory = (text: string, transactionType: string): string => {
+  const lowercaseText = text.toLowerCase();
+  let category = 'altro';
   
-  // Punteggio per termini base
-  for (const term of categoryData.base) {
-    if (input.includes(term)) {
-      score += 10; // Peso maggiore per termini base
-    }
-  }
-  
-  // Punteggio per parole chiave in sottocategorie/strumenti/fonti
-  for (const subcategoryKey in categoryData) {
-    if (typeof categoryData[subcategoryKey] === 'object' && 
-        !Array.isArray(categoryData[subcategoryKey])) {
-      
-      for (const subcat in categoryData[subcategoryKey]) {
-        if (Array.isArray(categoryData[subcategoryKey][subcat])) {
-          for (const term of categoryData[subcategoryKey][subcat]) {
-            if (input.includes(term)) {
-              score += 5; // Peso per termini di sottocategoria
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  // Considera anche lo storico dell'utente
-  score += getUserHistoryScoreFn(entities, category);
-  
-  return score;
-}
-
-/**
- * Determina la sottocategoria più probabile
- */
-export function determineSubcategory(
-  input: string, 
-  entities: Entity, 
-  subcategories: Record<string, string[]>
-): string | null {
-  let maxScore = 0;
-  let bestSubcategory = null;
-  
-  for (const [subcategory, terms] of Object.entries(subcategories)) {
-    let score = 0;
-    
-    for (const term of terms) {
-      if (input.includes(term)) {
-        score += 1;
-      }
+  if (transactionType === 'expense') {
+    // Food related
+    if (
+      lowercaseText.includes('pizza') ||
+      lowercaseText.includes('ristorante') ||
+      lowercaseText.includes('cibo') ||
+      lowercaseText.includes('pranzo') ||
+      lowercaseText.includes('cena') ||
+      lowercaseText.includes('colazione') ||
+      lowercaseText.includes('spesa') ||
+      lowercaseText.includes('supermercato') ||
+      lowercaseText.includes('bar')
+    ) {
+      category = 'cibo';
     }
     
-    if (score > maxScore) {
-      maxScore = score;
-      bestSubcategory = subcategory;
+    // Bills and utilities
+    else if (
+      lowercaseText.includes('bolletta') ||
+      lowercaseText.includes('luce') ||
+      lowercaseText.includes('gas') ||
+      lowercaseText.includes('acqua') ||
+      lowercaseText.includes('telefono') ||
+      lowercaseText.includes('internet')
+    ) {
+      category = 'utenze';
+    }
+    
+    // Transportation
+    else if (
+      lowercaseText.includes('trasporto') ||
+      lowercaseText.includes('treno') ||
+      lowercaseText.includes('bus') ||
+      lowercaseText.includes('metro') ||
+      lowercaseText.includes('taxi') ||
+      lowercaseText.includes('benzina') ||
+      lowercaseText.includes('carburante') ||
+      lowercaseText.includes('auto') ||
+      lowercaseText.includes('macchina')
+    ) {
+      category = 'trasporto';
+    }
+    
+    // Entertainment
+    else if (
+      lowercaseText.includes('cinema') ||
+      lowercaseText.includes('teatro') ||
+      lowercaseText.includes('concerto') ||
+      lowercaseText.includes('evento') ||
+      lowercaseText.includes('netflix') ||
+      lowercaseText.includes('spotify') ||
+      lowercaseText.includes('abbonamento')
+    ) {
+      category = 'intrattenimento';
+    }
+    
+    // Shopping
+    else if (
+      lowercaseText.includes('shopping') ||
+      lowercaseText.includes('vestiti') ||
+      lowercaseText.includes('scarpe') ||
+      lowercaseText.includes('abbigliamento') ||
+      lowercaseText.includes('accessori')
+    ) {
+      category = 'shopping';
+    }
+    
+    // Health
+    else if (
+      lowercaseText.includes('medico') ||
+      lowercaseText.includes('farmacia') ||
+      lowercaseText.includes('medicine') ||
+      lowercaseText.includes('salute') ||
+      lowercaseText.includes('visita') ||
+      lowercaseText.includes('dottore')
+    ) {
+      category = 'salute';
+    }
+    
+    // Housing
+    else if (
+      lowercaseText.includes('affitto') ||
+      lowercaseText.includes('mutuo') ||
+      lowercaseText.includes('casa') ||
+      lowercaseText.includes('condominio')
+    ) {
+      category = 'alloggio';
     }
   }
   
-  return bestSubcategory;
-}
+  else if (transactionType === 'income') {
+    if (
+      lowercaseText.includes('stipendio') ||
+      lowercaseText.includes('salario') ||
+      lowercaseText.includes('lavoro')
+    ) {
+      category = 'stipendio';
+    }
+  }
+  
+  else if (transactionType === 'investment') {
+    category = 'investimenti';
+  }
+  
+  return category;
+};
+
+// Process a transaction object and enrich it with classified data
+export const enrichTransaction = (transaction: TransactionType): TransactionType => {
+  if (!transaction.type || transaction.type === 'unknown') {
+    transaction.type = classifyTransactionType(transaction.description || '');
+  }
+  
+  if (!transaction.category) {
+    transaction.category = classifyCategory(transaction.description || '', transaction.type);
+  }
+  
+  return transaction;
+};

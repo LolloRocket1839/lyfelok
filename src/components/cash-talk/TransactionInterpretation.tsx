@@ -1,117 +1,120 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { Check, Edit, AlertCircle } from 'lucide-react';
-import { NlpAnalysisResult } from '@/utils/adaptiveNlpProcessor';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Check, Edit } from 'lucide-react';
 
 export interface TransactionInterpretationProps {
-  analysis: NlpAnalysisResult | any;
-  onConfirm?: () => void;
-  onEdit?: () => void;
+  data: {
+    type: string;
+    amount: number;
+    category: string;
+    description?: string;
+    date?: string;
+    account?: string;
+  };
+  onConfirm: () => void;
+  onEdit: () => void;
 }
 
-const TransactionInterpretation: React.FC<TransactionInterpretationProps> = ({ 
-  analysis, 
-  onConfirm, 
-  onEdit 
+export const TransactionInterpretation: React.FC<TransactionInterpretationProps> = ({ 
+  data, 
+  onConfirm,
+  onEdit
 }) => {
-  // Determine transaction type label
-  const getTransactionTypeLabel = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case 'entrata': return 'Entrata';
-      case 'uscita': return 'Spesa';
-      case 'investimento': return 'Investimento';
-      default: return 'Transazione';
+  const { type, amount, category, description, date, account } = data;
+  
+  const getTypeColor = () => {
+    switch (type) {
+      case 'expense':
+        return 'text-red-600';
+      case 'investment':
+        return 'text-blue-600';
+      case 'income':
+        return 'text-green-600';
+      default:
+        return 'text-gray-600';
     }
   };
-
-  // Format amount with sign based on transaction type
-  const getFormattedAmount = () => {
-    const amount = Math.abs(analysis.amount || 0);
-    const type = analysis.type?.toLowerCase();
-    
-    if (type === 'uscita') {
-      return `-${formatCurrency(amount)}`;
-    } else if (type === 'entrata') {
-      return `+${formatCurrency(amount)}`;
-    } else {
-      return formatCurrency(amount);
-    }
-  };
-
-  // Get confidence indicator
-  const getConfidenceIndicator = () => {
-    const confidence = analysis.confidence || 0;
-    
-    if (confidence > 0.8) {
-      return <span className="text-green-500 flex items-center"><Check size={16} className="mr-1" /> Alta affidabilità</span>;
-    } else if (confidence > 0.5) {
-      return <span className="text-yellow-500 flex items-center"><AlertCircle size={16} className="mr-1" /> Media affidabilità</span>;
-    } else {
-      return <span className="text-red-500 flex items-center"><AlertCircle size={16} className="mr-1" /> Bassa affidabilità</span>;
+  
+  const getTypeLabel = () => {
+    switch (type) {
+      case 'expense':
+        return 'Spesa';
+      case 'investment':
+        return 'Investimento';
+      case 'income':
+        return 'Entrata';
+      default:
+        return 'Transazione';
     }
   };
 
   return (
-    <Card className="p-4 animate-in fade-in slide-in-from-bottom-5 duration-300 mb-4 bg-white border shadow-md">
-      <div className="flex flex-col">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <h3 className="font-medium text-lg">{getTransactionTypeLabel(analysis.type)}</h3>
-            <p className="text-sm text-gray-500">{analysis.description || 'Nessuna descrizione'}</p>
-          </div>
-          <div className="text-xl font-bold">
-            {getFormattedAmount()}
-          </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gray-50 rounded-lg p-4"
+    >
+      <h3 className="font-medium text-lg mb-3">Conferma la tua transazione</h3>
+      
+      <div className="space-y-3">
+        <div className="flex justify-between">
+          <span className="text-gray-600">Tipo:</span>
+          <span className={`font-medium ${getTypeColor()}`}>{getTypeLabel()}</span>
         </div>
         
-        <div className="flex flex-col space-y-1 mt-1 mb-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Categoria:</span>
-            <span className="font-medium">{analysis.category || 'Non classificata'}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Data:</span>
-            <span>{analysis.date || new Date().toLocaleDateString()}</span>
-          </div>
-          {analysis.confidence !== undefined && (
-            <div className="flex justify-between text-sm items-center">
-              <span className="text-gray-500">Affidabilità:</span>
-              {getConfidenceIndicator()}
-            </div>
-          )}
+        <div className="flex justify-between">
+          <span className="text-gray-600">Importo:</span>
+          <span className="font-medium">{formatCurrency(amount)}</span>
         </div>
         
-        <div className="flex justify-end space-x-2 mt-2">
-          {onEdit && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onEdit}
-              className="flex items-center"
-            >
-              <Edit size={16} className="mr-1" />
-              Modifica
-            </Button>
-          )}
-          
-          {onConfirm && (
-            <Button 
-              variant="default" 
-              size="sm" 
-              onClick={onConfirm}
-              className="flex items-center"
-            >
-              <Check size={16} className="mr-1" />
-              Conferma
-            </Button>
-          )}
+        <div className="flex justify-between">
+          <span className="text-gray-600">Categoria:</span>
+          <span className="font-medium">{category}</span>
         </div>
+        
+        {description && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Descrizione:</span>
+            <span className="font-medium">{description}</span>
+          </div>
+        )}
+        
+        {date && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Data:</span>
+            <span className="font-medium">{date}</span>
+          </div>
+        )}
+        
+        {account && (
+          <div className="flex justify-between">
+            <span className="text-gray-600">Conto:</span>
+            <span className="font-medium">{account}</span>
+          </div>
+        )}
       </div>
-    </Card>
+      
+      <div className="mt-5 flex space-x-3">
+        <Button 
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+          onClick={onConfirm}
+        >
+          <Check className="mr-2 h-4 w-4" />
+          Conferma
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          className="flex-1"
+          onClick={onEdit}
+        >
+          <Edit className="mr-2 h-4 w-4" />
+          Modifica
+        </Button>
+      </div>
+    </motion.div>
   );
 };
-
-export default TransactionInterpretation;

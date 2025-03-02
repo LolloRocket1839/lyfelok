@@ -1,30 +1,51 @@
 
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useLifestyleLock } from '@/hooks/useLifestyleLock';
 import HeaderNav from '@/components/ui/HeaderNav';
 import FinancialManagementView from '@/components/financial-management/FinancialManagementView';
 import ModalsContainer from '@/components/ui/ModalsContainer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import ConversationalInterface from '@/components/cash-talk/ConversationalInterface';
+import { useLifestyleLock } from '@/hooks/useLifestyleLock';
 import { fadeIn } from '@/lib/animations';
+
+type AppView = 'dashboard' | 'investments' | 'expenses' | 'projections' | 'finances';
 
 const FinancialManagement = () => {
   const [loading, setLoading] = useState(true);
   const [showContent, setShowContent] = useState(false);
-
+  const [view, setView] = useState<AppView>('finances');
+  
   const {
-    view,
-    setView,
+    income,
+    previousIncome,
+    baselineLifestyle,
     currentMonth,
+    restraintScore,
+    investments,
+    savings,
+    incomeHistory,
     deposits,
     expenses,
     setExpenses,
+    totalSpent,
     totalDeposits,
     
+    newIncome,
+    investmentAllocation,
+    savingsAllocation,
+    lifestyleAllocation,
+    
+    handleIncomeIncrease,
+    handleAddDeposit,
+    handleExpenseSubmit,
     handleDeleteDeposit,
     startEditDeposit,
     
+    newIncomeValue,
+    setNewIncomeValue,
+    incomeDate,
+    setIncomeDate,
     expenseCategory,
     setExpenseCategory,
     expenseSpent, 
@@ -52,14 +73,8 @@ const FinancialManagement = () => {
     setActiveModal,
     resetExpenseForm,
     
-    handleIncomeIncrease,
-    handleAddDeposit,
-    handleExpenseSubmit,
-    
-    newIncomeValue,
-    setNewIncomeValue,
-    incomeDate,
-    setIncomeDate,
+    allocationData,
+    projectionData,
     
     getCurrentDate
   } = useLifestyleLock();
@@ -68,7 +83,7 @@ const FinancialManagement = () => {
     setTimeout(() => {
       setLoading(false);
       setTimeout(() => setShowContent(true), 300);
-    }, 800);
+    }, 1800);
   }, []);
 
   return (
@@ -85,32 +100,51 @@ const FinancialManagement = () => {
           setActiveModal={setActiveModal}
         />
         
-        <main className="max-w-7xl mx-auto sm:pt-6 pb-20">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 pb-20">
           {showContent && (
             <motion.div 
               variants={fadeIn}
               initial="hidden"
               animate="visible"
+              className="mb-6 p-4 rounded-lg shadow-sm border bg-emerald-50 border-emerald-100 text-emerald-900"
             >
-              <FinancialManagementView
-                expenses={expenses}
-                setExpenses={setExpenses}
-                deposits={deposits}
-                totalDeposits={totalDeposits}
-                setActiveModal={setActiveModal}
-                setEditingExpense={setEditingExpense}
-                setExpenseCategory={setExpenseCategory}
-                setExpenseSpent={setExpenseSpent}
-                setExpenseBaseline={setExpenseBaseline}
-                handleDeleteDeposit={handleDeleteDeposit}
-                startEditDeposit={startEditDeposit}
-              />
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="font-medium">Gestione Finanziaria Avanzata</p>
+                  <p className="text-sm mt-1">Qui puoi analizzare e gestire tutte le tue finanze in modo dettagliato.</p>
+                </div>
+                <div className="px-3 py-1.5 bg-white text-emerald-600 rounded-lg shadow-sm text-sm border border-emerald-100">
+                  Pro
+                </div>
+              </div>
             </motion.div>
           )}
+          
+          <AnimatePresence mode="wait">
+            {showContent && (
+              <motion.div
+                key={view}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4 }}
+              >
+                <FinancialManagementView 
+                  income={income}
+                  investments={investments}
+                  totalSpent={totalSpent}
+                  savings={savings}
+                  baselineLifestyle={baselineLifestyle}
+                  deposits={deposits}
+                  expenses={expenses}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
         
         {showContent && (
-          <ConversationalInterface viewSetter={setView} />
+          <ConversationalInterface viewSetter={(newView) => setView(newView as any)} />
         )}
       </div>
       

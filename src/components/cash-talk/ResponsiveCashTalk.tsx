@@ -17,7 +17,7 @@ const ResponsiveCashTalk: React.FC<ResponsiveCashTalkProps> = ({
     <motion.div
       whileHover={{ scale: isTransitioning ? 1 : 1.05 }}
       whileTap={{ scale: isTransitioning ? 1 : 0.95 }}
-      className="flex items-center justify-between w-full h-full px-3 bg-gradient-to-r from-blue-600 to-indigo-600 cursor-pointer"
+      className="flex items-center justify-between w-full h-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 cursor-pointer rounded-xl"
       onClick={!isTransitioning ? onClick : undefined}
     >
       <div className="flex items-center">
