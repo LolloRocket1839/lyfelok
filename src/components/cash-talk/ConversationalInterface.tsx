@@ -271,6 +271,51 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     });
   };
 
+  // Handle form submission from the unified interface
+  const handleFormSubmit = async (formData: any): Promise<void> => {
+    console.log('Form data received:', formData);
+    
+    if (!user?.id || !formData.amount || !formData.category) {
+      return Promise.reject(new Error("Missing required fields or user not authenticated"));
+    }
+    
+    // Construct a transaction from form data
+    const transaction = {
+      type: formData.type === 'expense' ? 'USCITA' : 
+            formData.type === 'investment' ? 'INVESTIMENTO' : 'ENTRATA',
+      amount: parseFloat(formData.amount),
+      description: formData.description || formData.category,
+      category: formData.category,
+      date: formData.date || new Date().toISOString().split('T')[0],
+      metadata: {
+        baselineAmount: parseFloat(formData.amount),
+        rawInput: `${formData.amount} ${formData.description} (${formData.category})`,
+        processingTime: new Date()
+      }
+    };
+    
+    console.log('Constructed transaction from form:', transaction);
+    
+    // Route the transaction using the existing router
+    return new Promise((resolve, reject) => {
+      try {
+        if (transactionRouterRef.current) {
+          const routedTransaction = transactionRouterRef.current.route(transaction);
+          console.log('Routed transaction from form:', routedTransaction);
+          
+          // Show toast notification based on transaction type
+          showTransactionToast(routedTransaction);
+          resolve();
+        } else {
+          reject(new Error("Transaction router not initialized"));
+        }
+      } catch (error) {
+        console.error('Error processing form submission:', error);
+        reject(error);
+      }
+    });
+  };
+
   // Show a toast notification for the transaction
   const showToast = (message: string, variant: 'default' | 'destructive' = 'default') => {
     toast({
@@ -307,6 +352,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     <>
       <ResponsiveCashTalk 
         onSubmit={handleAnalyze}
+        onFormSubmit={handleFormSubmit}
         isProcessing={processing}
         categories={mainCategories}
         lastTransaction={lastTransaction}
