@@ -8,7 +8,7 @@ import { TransactionProcessor } from './nlp/transactionProcessor';
 import { TextProcessor } from './nlp/textProcessor';
 import { ProcessedText, ClassificationResult, ExtractedEntities } from './nlp/types';
 import { autoCategorize, addCustomRule, createMerchantPattern } from './categorization';
-import { ExpenseCategories } from './categorization/types';
+import { ExpenseCategories, categoryEmojis } from './categorization/types';
 
 const enhancedNlpProcessor = {
   userId: null as string | null,
@@ -35,11 +35,18 @@ const enhancedNlpProcessor = {
       // Step 3: Extract entities
       const entities: ExtractedEntities = EntityExtractor.extract(processedText, classification);
       
-      // Step 4: Process into a transaction
+      // Step 4: Check for emoji indicators in text which might help with categorization
+      const emojiMatch = enhancedNlpProcessor.extractEmojisFromText(text);
+      if (emojiMatch && !entities.category) {
+        console.log(`Found emoji indicator: ${emojiMatch.emoji} for category ${emojiMatch.category}`);
+        entities.category = emojiMatch.category;
+      }
+      
+      // Step 5: Process into a transaction
       let transaction = TransactionProcessor.processIntoTransaction(processedText, classification, entities);
       
       if (transaction) {
-        // Step 5: Enrich transaction with additional data
+        // Step 6: Enrich transaction with additional data
         transaction = EntityExtractor.enrichTransactionData(transaction, text);
         
         // Log the transaction for debugging purposes
@@ -48,7 +55,7 @@ const enhancedNlpProcessor = {
         // Add the transaction to the store
         const processedTransaction = transactionStore.addTransaction(transaction);
         
-        // Step 6: Learn from this transaction to improve future categorization
+        // Step 7: Learn from this transaction to improve future categorization
         enhancedNlpProcessor.learnFromTransaction(text, transaction);
         
         return processedTransaction;
@@ -58,6 +65,28 @@ const enhancedNlpProcessor = {
       console.error('Error processing text in enhanced NLP processor:', error);
       return null;
     }
+  },
+  
+  // Extract emojis from text and identify potential categories
+  extractEmojisFromText: (text: string): { emoji: string, category: string } | null => {
+    // Create a reverse mapping of emoji to category
+    const emojiToCategory: Record<string, string> = {};
+    
+    Object.entries(categoryEmojis).forEach(([category, emoji]) => {
+      emojiToCategory[emoji] = category;
+    });
+    
+    // Search for any emojis in the text
+    for (const emoji of Object.values(categoryEmojis)) {
+      if (text.includes(emoji)) {
+        return {
+          emoji, 
+          category: emojiToCategory[emoji]
+        };
+      }
+    }
+    
+    return null;
   },
   
   // Learn from successful transactions to improve future categorization
@@ -70,11 +99,25 @@ const enhancedNlpProcessor = {
     try {
       // Extract potential merchant names or key terms from the text
       const words = text.split(/\s+/);
+      
+      // Filter out emojis for separate processing
+      const emojis = words.filter(word => 
+        /\p{Emoji}/u.test(word) && 
+        !word.match(/[\p{L}\p{N}]/u) // Only pure emoji characters
+      );
+      
       const potentialMerchants = words.filter(word => 
         word.length > 3 && 
         !/^\d+$/.test(word) && // Exclude numbers
+        !/\p{Emoji}/u.test(word) && // Exclude emoji-only words
         !['euro', 'eur', '€', 'per', 'con', 'dal', 'del', 'che', 'non', 'come', 'cosa', 'sono', 'alla', 'alle', 'nella', 'nelle'].includes(word.toLowerCase()) // Exclude common words
       );
+      
+      // If we found emojis in the text, associate them with this category
+      if (emojis.length > 0) {
+        console.log(`Learning emoji-category association: "${emojis[0]}" -> ${transaction.category}`);
+        // This could be used to enhance the emoji-category mapping in the future
+      }
       
       if (potentialMerchants.length > 0) {
         // Sort by length and take the longest words as potential merchant names
@@ -145,11 +188,18 @@ const enhancedNlpProcessor = {
       const classification = Classifier.classify(processedText);
       const entities = EntityExtractor.extract(processedText, classification);
       
+      // Check for emoji indicators
+      const emojiMatch = enhancedNlpProcessor.extractEmojisFromText(text);
+      if (emojiMatch) {
+        console.log(`Analysis found emoji: ${emojiMatch.emoji} for category ${emojiMatch.category}`);
+      }
+      
       // Return detailed analysis
       return {
         processed: processedText,
         classification: classification,
         entities: entities,
+        emojiIndicator: emojiMatch,
         summary: {
           type: classification.type,
           amount: entities.amount,

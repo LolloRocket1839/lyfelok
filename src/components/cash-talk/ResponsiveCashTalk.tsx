@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, MessageSquare, X, HelpCircle, Loader2 } from 'lucide-react';
+import { ArrowUp, MessageSquare, X, HelpCircle, Loader2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { mainCategories } from '@/utils/transactionStore';
 import { useToast } from '@/components/ui/use-toast';
+import { ExpenseCategories, categoryEmojis } from '@/utils/categorization/types';
+import { getEmojiForCategory } from '@/utils/categorization/icons';
 
 interface TransactionFormData {
   type: 'expense' | 'income' | 'investment';
@@ -45,6 +46,7 @@ const ResponsiveCashTalk = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [showFormMode, setShowFormMode] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState<TransactionFormData>({
@@ -58,10 +60,10 @@ const ResponsiveCashTalk = ({
   // Placeholders that rotate
   const placeholders = [
     "Registra transazione...",
-    "es: 30 pizza",
-    "es: affitto 800€",
-    "es: stipendio 1500€",
-    "es: investito 200€ in ETF",
+    "es: 30 pizza 🍕",
+    "es: affitto 800€ 🏠",
+    "es: stipendio 1500€ 💰",
+    "es: investito 200€ in ETF 📈",
   ];
   
   // Rotate placeholders
@@ -123,7 +125,6 @@ const ResponsiveCashTalk = ({
     if (onFormSubmit) {
       onFormSubmit(formData)
         .then(() => {
-          // Reset form after submission
           setFormData({
             type: 'expense',
             amount: '',
@@ -147,21 +148,37 @@ const ResponsiveCashTalk = ({
   };
 
   // Handle category shortcut click
-  const handleCategoryShortcut = (category: string) => {
+  const handleCategoryShortcut = (category: string, emoji?: string) => {
     if (showFormMode) {
-      // In form mode, set the category in the form
       setFormData(prev => ({
         ...prev,
         category
       }));
     } else {
-      // In text mode, append to the input
       setInputValue(prevValue => {
         const baseValue = prevValue.trim();
-        return baseValue ? `${baseValue} (${category})` : `${category}`;
+        return baseValue ? `${baseValue} ${emoji || ''} (${category})` : `${category} ${emoji || ''}`;
       });
       
-      // Focus the input after insertion
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }
+  };
+
+  // Handle emoji shortcut click
+  const handleEmojiShortcut = (emoji: string, category: string) => {
+    if (showFormMode) {
+      setFormData(prev => ({
+        ...prev,
+        category
+      }));
+    } else {
+      setInputValue(prevValue => {
+        const baseValue = prevValue.trim();
+        return baseValue ? `${baseValue} ${emoji}` : emoji;
+      });
+      
       if (inputRef.current) {
         inputRef.current.focus();
       }
@@ -179,9 +196,7 @@ const ResponsiveCashTalk = ({
   // Toggle between form and text input modes
   const toggleFormMode = () => {
     setShowFormMode(prev => !prev);
-    // Initialize form with any text already in the input
     if (!showFormMode && inputValue) {
-      // Basic parsing of input value (could be enhanced)
       const matches = inputValue.match(/(\d+).*?([a-zA-Z]+)/);
       if (matches) {
         setFormData(prev => ({
@@ -199,6 +214,43 @@ const ResponsiveCashTalk = ({
       ...prev,
       [field]: value
     }));
+  };
+
+  // Generate emoji category buttons
+  const renderEmojiCategories = () => {
+    const quickCategories = [
+      { emoji: "🍕", category: ExpenseCategories.Food },
+      { emoji: "🏠", category: ExpenseCategories.Housing },
+      { emoji: "🚗", category: ExpenseCategories.Transport },
+      { emoji: "🎬", category: ExpenseCategories.Entertainment },
+      { emoji: "🛍️", category: ExpenseCategories.Shopping },
+      { emoji: "💡", category: ExpenseCategories.Utilities },
+      { emoji: "⚕️", category: ExpenseCategories.Health },
+      { emoji: "📚", category: ExpenseCategories.Education },
+      { emoji: "✈️", category: ExpenseCategories.Travel },
+    ];
+
+    return (
+      <div className="flex overflow-x-auto scrollbar-hide gap-2 py-2">
+        {quickCategories.map(item => (
+          <button
+            key={item.emoji}
+            onClick={() => handleEmojiShortcut(item.emoji, item.category)}
+            className="flex items-center justify-center h-9 w-9 bg-gray-50 hover:bg-gray-100 rounded-full transition-all"
+            title={item.category}
+          >
+            <span className="text-lg">{item.emoji}</span>
+          </button>
+        ))}
+        <button
+          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          className="flex items-center justify-center h-9 w-9 bg-gray-50 hover:bg-gray-100 rounded-full transition-all"
+          title="More categories"
+        >
+          <Plus size={16} className="text-gray-500" />
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -381,12 +433,15 @@ const ResponsiveCashTalk = ({
           )}
         </AnimatePresence>
         
-        {/* Category shortcuts */}
+        <div className="px-3 py-2 border-t border-gray-100">
+          {renderEmojiCategories()}
+        </div>
+        
         <div className="flex overflow-x-auto scrollbar-hide gap-2 py-2 px-3 border-t border-gray-100">
           {categories.slice(0, windowWidth < 640 ? 3 : 5).map(category => (
             <button
               key={category.id}
-              onClick={() => handleCategoryShortcut(category.label)}
+              onClick={() => handleCategoryShortcut(category.label, getEmojiForCategory(category.label))}
               className={cn(
                 "flex items-center gap-1 text-xs whitespace-nowrap px-3 py-1.5 rounded-full transition-all",
                 "hover:-translate-y-0.5 hover:shadow-sm"
@@ -396,13 +451,40 @@ const ResponsiveCashTalk = ({
                 color: category.color 
               }}
             >
-              <span>{category.icon}</span>
+              <span>{getEmojiForCategory(category.label)}</span>
               <span>{category.label}</span>
             </button>
           ))}
         </div>
         
-        {/* Last transaction (desktop only) */}
+        <AnimatePresence>
+          {showEmojiPicker && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="border-t border-gray-100 p-3 bg-gray-50"
+            >
+              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2">
+                {Object.entries(categoryEmojis).map(([category, emoji]) => (
+                  <button
+                    key={category}
+                    onClick={() => {
+                      handleEmojiShortcut(emoji, category);
+                      setShowEmojiPicker(false);
+                    }}
+                    className="flex flex-col items-center justify-center p-2 hover:bg-white rounded-md transition-colors"
+                    title={category}
+                  >
+                    <span className="text-lg mb-1">{emoji}</span>
+                    <span className="text-xs text-gray-600 truncate w-full text-center">{category}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
         {windowWidth >= 992 && lastTransaction && (
           <div className="hidden lg:flex items-center justify-between py-1.5 px-3 bg-gray-50 text-xs border-t border-gray-100">
             <div className="flex items-center gap-1">
