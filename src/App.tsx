@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ui/ProtectedRoute";
+import FinancialManagement from "./pages/FinancialManagement";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Index />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/finances"
+              element={
+                <ProtectedRoute>
+                  <FinancialManagement />
                 </ProtectedRoute>
               }
             />

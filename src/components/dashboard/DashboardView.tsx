@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   DollarSign, TrendingUp, Percent, ChevronDown, ChevronUp,
   PieChart, ArrowUpRight, CreditCard, Wallet
@@ -80,6 +81,26 @@ const DashboardView = ({
 
   return (
     <div className="space-y-6">
+      {/* New Financial Management Link */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl shadow-md p-5 border border-blue-400 text-white mb-4"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-medium mb-2">Gestione Finanziaria Unificata</h2>
+            <p className="text-blue-100">Visualizza e gestisci spese e investimenti in un unico posto!</p>
+          </div>
+          <Link to="/finances">
+            <Button className="bg-white text-blue-600 hover:bg-blue-50 transition-colors">
+              Vai alla Gestione
+            </Button>
+          </Link>
+        </div>
+      </motion.div>
+
       {/* Sezione principale con le metriche chiave */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Saldo disponibile */}
