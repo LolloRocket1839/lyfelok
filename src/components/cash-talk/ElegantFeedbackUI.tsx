@@ -5,6 +5,7 @@ import { mainCategories } from '@/utils/transactionStore';
 import { Transaction } from '@/utils/transactionRouter';
 import { supabase, userCategoryMappings, globalCategoryMappings } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface ElegantFeedbackUIProps {
   transaction: Transaction;
@@ -25,7 +26,7 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
       if (visible) {
         handleDismiss();
       }
-    }, 15000); // Disappears after 15 seconds if the user doesn't interact
+    }, 10000); // Reduced from 15 seconds to 10 seconds for better UX
     
     return () => clearTimeout(timer);
   }, [visible]);
@@ -36,19 +37,27 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
       // Update local UI first for responsiveness
       onSelectCategory(categoryId);
       
+      // Check if we have valid transaction data for updating mappings
+      const transactionDescription = transaction?.description || '';
+      
+      // If transaction has no description, create a fallback description based on category
+      const effectiveDescription = transactionDescription || categoryId;
+      
       // If user is logged in, update mapping in Supabase
-      if (user && transaction?.description) {
-        await updateCategoryMapping(transaction.description, categoryId, user.id);
+      if (user && effectiveDescription) {
+        await updateCategoryMapping(effectiveDescription, categoryId, user.id);
+        toast.success('Categoria aggiornata con successo');
       } else {
         console.log("Skipping mapping update - missing user or transaction data:", {
           user: !!user,
-          description: transaction?.description
+          description: effectiveDescription
         });
       }
       
       setVisible(false);
     } catch (error) {
       console.error("Error updating category mapping:", error);
+      toast.error('Errore durante l\'aggiornamento della categoria');
       // Still update the UI even if the backend update fails
       setVisible(false);
     }
@@ -63,6 +72,15 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
   // Update category mapping in Supabase
   const updateCategoryMapping = async (description: string, categoryId: string, userId: string) => {
     try {
+      if (!description || !categoryId || !userId) {
+        console.warn("Missing required parameters for category mapping update:", {
+          description: !!description,
+          categoryId: !!categoryId,
+          userId: !!userId
+        });
+        return;
+      }
+      
       // Update user mappings
       await userCategoryMappings.updateMappings(description, categoryId, userId);
       
@@ -71,7 +89,9 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
       
       // Update global mappings for each keyword
       for (const keyword of keywords) {
-        await globalCategoryMappings.updateGlobalMapping(keyword, categoryId);
+        if (keyword && keyword.length > 1) {
+          await globalCategoryMappings.updateGlobalMapping(keyword, categoryId);
+        }
       }
     } catch (error) {
       console.error("Error updating category mappings:", error);
@@ -86,12 +106,20 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
       return [];
     }
     
-    // Remove stopwords, tokenize and filter
-    const stopwords = ['di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra', 'il', 'lo', 'la', 'i', 'gli', 'le'];
+    // Improved stopwords list with more Italian common words
+    const stopwords = [
+      'di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra', 
+      'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'una', 'uno',
+      'e', 'che', 'è', 'sono', 'ho', 'hai', 'ha', 'del', 'della',
+      'al', 'dal', 'nel', 'sulla', 'questo', 'questa', 'mio', 'tuo'
+    ];
+    
+    // Improved tokenization that handles partial words better
     return text
       .toLowerCase()
+      .replace(/[^\w\sàèéìòù]/g, ' ') // Replace non-alphanumeric chars except Italian accents
       .split(/\s+/)
-      .filter(word => word.length > 2 && !stopwords.includes(word));
+      .filter(word => word.length > 1 && !stopwords.includes(word)); // Accept words with length > 1
   };
   
   // Don't render if not visible
