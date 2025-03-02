@@ -1,6 +1,6 @@
 
 import { ProcessedText, ClassificationResult, IntentType } from './types';
-import { KnowledgeBase } from './knowledgeBase';
+import { knowledgeBase } from './knowledgeBase';
 
 export class Classifier {
   static classify(processedText: ProcessedText): ClassificationResult {
@@ -8,57 +8,66 @@ export class Classifier {
     
     // Default classification
     let classification: ClassificationResult = {
-      intent: 'unknown',
+      type: 'SPESA',
       confidence: 0,
-      category: null
+      subcategory: null,
+      allScores: {}
     };
     
     // Check for income related intents
-    if (this.matchesAny(normalizedText, KnowledgeBase.income.variations)) {
+    if (this.matchesAny(normalizedText, knowledgeBase.intents.add_income)) {
       classification = {
-        intent: 'add_income',
+        type: 'ENTRATA',
         confidence: 0.9,
-        category: 'income'
+        subcategory: 'income',
+        allScores: { 'ENTRATA': 0.9, 'SPESA': 0.1, 'INVESTIMENTO': 0.1 }
       };
     }
     
     // Check for expense related intents
-    else if (this.matchesAny(normalizedText, KnowledgeBase.expense.variations)) {
+    else if (this.matchesAny(normalizedText, knowledgeBase.intents.add_expense)) {
       classification = {
-        intent: 'add_expense',
+        type: 'SPESA',
         confidence: 0.9,
-        category: 'expense'
+        subcategory: 'expense',
+        allScores: { 'SPESA': 0.9, 'ENTRATA': 0.1, 'INVESTIMENTO': 0.1 }
       };
     }
     
     // Check for investment related intents
-    else if (this.matchesAny(normalizedText, KnowledgeBase.investment.variations)) {
+    else if (this.matchesAny(normalizedText, knowledgeBase.intents.add_investment)) {
       classification = {
-        intent: 'add_investment',
+        type: 'INVESTIMENTO',
         confidence: 0.9,
-        category: 'investment'
+        subcategory: 'investment',
+        allScores: { 'INVESTIMENTO': 0.9, 'SPESA': 0.1, 'ENTRATA': 0.1 }
       };
     }
     
     // Check for view changing intents
-    else if (this.matchesAny(normalizedText, KnowledgeBase.navigation.variations)) {
+    else if (this.matchesAny(normalizedText, knowledgeBase.intents.view_dashboard)) {
       classification = {
-        intent: 'change_view',
+        type: 'SPESA', // Default type, but this won't be used for view changes
         confidence: 0.9,
-        category: 'navigation'
+        subcategory: 'navigation',
+        allScores: {}
       };
     }
     
-    // Specific view intents
-    for (const view of ['dashboard', 'finances', 'projections']) {
-      if (normalizedText.includes(view) || 
-          (view === 'finances' && (normalizedText.includes('expense') || normalizedText.includes('investment')))) {
-        classification = {
-          intent: 'change_view',
-          confidence: 0.95,
-          category: view as IntentType
-        };
-        break;
+    // Look for specific categories
+    if (classification.type === 'SPESA') {
+      for (const category of knowledgeBase.entities.expense_category) {
+        if (normalizedText.includes(category)) {
+          classification.subcategory = category;
+          break;
+        }
+      }
+    } else if (classification.type === 'INVESTIMENTO') {
+      for (const category of knowledgeBase.entities.investment_category) {
+        if (normalizedText.includes(category)) {
+          classification.subcategory = category;
+          break;
+        }
       }
     }
     

@@ -1,6 +1,6 @@
 
 import { ProcessedText } from './types';
-import { KnowledgeBase } from './knowledgeBase';
+import { knowledgeBase } from './knowledgeBase';
 
 export class TextProcessor {
   static processText(input: string): ProcessedText {
@@ -28,7 +28,7 @@ export class TextProcessor {
   
   static detectLanguage(text: string): 'en' | 'it' {
     // Simplified language detection based on common Italian words
-    const italianIndicators = KnowledgeBase.languageDetection.italian;
+    const italianIndicators = ['ciao', 'buongiorno', 'grazie', 'prego', 'per', 'come', 'sono', 'ho', 'speso', 'euro'];
     
     let italianWordCount = 0;
     italianIndicators.forEach(word => {
