@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { 
   Home, 
@@ -6,7 +7,7 @@ import {
   Car, 
   Smartphone 
 } from 'lucide-react';
-import { autoCategorize, addCustomRule, createMerchantPattern } from '@/utils/autoCategorization';
+import { autoCategorize, addCustomRule, createMerchantPattern } from '@/utils/categorization';
 import { categorizeInvestment } from '@/utils/investmentCategorization';
 import { transactionStore } from '@/utils/transactionStore';
 import { Transaction } from '@/utils/transactionRouter';

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { modalAnimation, overlayAnimation } from '@/lib/animations';
 import { ModalType, ExpenseItem } from '@/hooks/useLifestyleLock';
 import { useState, useEffect } from 'react';
-import { autoCategorize } from '@/utils/autoCategorization';
+import { autoCategorize } from '@/utils/categorization';
 import { categorizeInvestment, getAllCategories } from '@/utils/investmentCategorization';
 
 interface ModalsContainerProps {
