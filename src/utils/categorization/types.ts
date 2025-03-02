@@ -27,7 +27,9 @@ export enum ExpenseCategories {
   Travel = "Viaggi",
   PersonalCare = "Cura Personale",
   Subscriptions = "Abbonamenti",
-  Other = "Altro"
+  Other = "Altro",
+  Investment = "Investimento",
+  Income = "Reddito"
 }
 
 // Mapping from category to emoji
@@ -43,5 +45,8 @@ export const categoryEmojis: Record<string, string> = {
   [ExpenseCategories.Travel]: "✈️",
   [ExpenseCategories.PersonalCare]: "💇",
   [ExpenseCategories.Subscriptions]: "📱",
-  [ExpenseCategories.Other]: "📌"
+  [ExpenseCategories.Other]: "📌",
+  [ExpenseCategories.Investment]: "📈",
+  [ExpenseCategories.Income]: "💰"
 };
+

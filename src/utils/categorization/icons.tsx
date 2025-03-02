@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, ShoppingBag, Coffee, Car, Smartphone, BookOpen, Plane, Heart, Tv } from 'lucide-react';
+import { Home, ShoppingBag, Coffee, Car, Smartphone, BookOpen, Plane, Heart, Tv, TrendingUp, DollarSign } from 'lucide-react';
 import { categoryEmojis, ExpenseCategories } from './types';
 
 /**
@@ -28,6 +28,10 @@ export function getIconByType(iconType: string): React.ReactElement {
       return <Heart size={18} />;
     case 'tv':
       return <Tv size={18} />;
+    case 'trending-up':
+      return <TrendingUp size={18} />;
+    case 'dollar-sign':
+      return <DollarSign size={18} />;
     default:
       return <Smartphone size={18} />;
   }
@@ -70,8 +74,13 @@ export function getEmojiForCategory(category: string): string {
     return categoryEmojis[ExpenseCategories.PersonalCare];
   } else if (lowerCategory.includes('abbona') || lowerCategory.includes('subscript') || lowerCategory.includes('serviz')) {
     return categoryEmojis[ExpenseCategories.Subscriptions];
+  } else if (lowerCategory.includes('invest') || lowerCategory.includes('etf') || lowerCategory.includes('stock') || lowerCategory.includes('bond')) {
+    return categoryEmojis[ExpenseCategories.Investment];
+  } else if (lowerCategory.includes('stipend') || lowerCategory.includes('income') || lowerCategory.includes('salary') || lowerCategory.includes('reddito')) {
+    return categoryEmojis[ExpenseCategories.Income];
   }
   
   // Default emoji if no match found
   return categoryEmojis[ExpenseCategories.Other];
 }
+
