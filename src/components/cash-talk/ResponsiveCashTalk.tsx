@@ -104,12 +104,12 @@ const ResponsiveCashTalk = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[560px] z-10"
+      className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[980px] z-10"
     >
       <div className="flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <form onSubmit={handleSubmit} className="flex items-center px-3 py-2">
           <div className="flex items-center px-2 text-sm text-gray-500">
-            <MessageSquare size={16} className="mr-1 text-gray-500" />
+            <MessageSquare size={16} className="mr-1 text-green-400" />
             <span className="text-xs font-medium hidden sm:inline">Cash Talk</span>
           </div>
           

@@ -1,4 +1,3 @@
-
 import { Transaction, TransactionType } from './transactionRouter';
 
 interface Entity {
@@ -79,8 +78,15 @@ export class EnhancedNlpProcessor {
         },
         categoriesVariations: {
           // Variazioni per la categoria cibo
-          'piza': 'pizza', 'pizz': 'pizza', 'ristornte': 'ristorante', 'ristorant': 'ristorante',
-          'supmercato': 'supermercato', 'supermerc': 'supermercato', 'spza': 'spesa', 'caffe': 'caffè'
+          "cibo": ["food", "groceries", "cibo", "alimentari", "supermercato", "spesa", "pranzo", "cena", "colazione", "pizza", "ristorante"],
+          "trasporti": ["transport", "travel", "trasporti", "trasporto", "treno", "metro", "bus", "taxi", "uber", "carburante", "benzina", "gasolio", "autostrada", "pedaggio"],
+          "casa": ["house", "home", "casa", "affitto", "mutuo", "bollette", "condominio", "arredamento", "manutenzione"],
+          "salute": ["health", "medical", "salute", "medico", "farmacia", "dottore", "dentista", "terapia", "visita"],
+          "intrattenimento": ["entertainment", "leisure", "intrattenimento", "svago", "divertimento", "cinema", "teatro", "concerto", "hobby", "streaming", "abbonamento"],
+          "educazione": ["education", "learning", "educazione", "formazione", "corso", "università", "libri", "studio"],
+          "abbigliamento": ["clothing", "abbigliamento", "vestiti", "scarpe", "accessori", "moda"],
+          "tecnologia": ["technology", "tech", "tecnologia", "elettronica", "dispositivi", "computer", "smartphone", "gadget"],
+          "altro": ["other", "altro", "varie", "extra", "misc"]
         }
       },
       
@@ -110,7 +116,7 @@ export class EnhancedNlpProcessor {
         }
       },
       
-      // Termini relativi alle ENTRATE con possibili errori di battitura
+      // Termini relativi agli ENTRATE con possibili errori di battitura
       income: {
         base: ['ricevuto', 'guadagnato', 'incassato', 'entrata', 'stipendio', 'rimborso', 'pagamento'],
         variations: {
