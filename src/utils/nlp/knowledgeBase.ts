@@ -35,7 +35,7 @@ export class NlpKnowledgeBase {
           "educazione": ["education", "learning", "educazione", "formazione", "corso", "università", "libri", "studio"],
           "abbigliamento": ["clothing", "abbigliamento", "vestiti", "scarpe", "accessori", "moda"],
           "tecnologia": ["technology", "tech", "tecnologia", "elettronica", "dispositivi", "computer", "smartphone", "gadget"],
-          "varie": ["other", "misc", "varie", "extra"] // Fixed: removed duplicate "altro"
+          "varie": ["other", "misc", "varie", "extra"]
         }
       },
       
