@@ -10,7 +10,7 @@ import { mainCategories } from '@/utils/transactionStore';
 import ResponsiveCashTalk from './ResponsiveCashTalk';
 
 interface ConversationalInterfaceProps {
-  viewSetter: (view: 'dashboard' | 'investments' | 'expenses' | 'projections') => void;
+  viewSetter: (view: 'dashboard' | 'finances' | 'projections') => void;
 }
 
 export default function ConversationalInterface({ viewSetter }: ConversationalInterfaceProps) {
@@ -193,14 +193,12 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       showToast('Dashboard aperta');
       setProcessing(false);
       return Promise.resolve();
-    } else if (lowerText.includes('investiment') || lowerText.includes('deposit')) {
-      viewSetter('investments');
-      showToast('Sezione investimenti aperta');
-      setProcessing(false);
-      return Promise.resolve();
-    } else if (lowerText.includes('spes') || lowerText.includes('budget') || lowerText.includes('cost')) {
-      viewSetter('expenses');
-      showToast('Sezione spese aperta');
+    } else if (lowerText.includes('investiment') || lowerText.includes('deposit') || 
+               lowerText.includes('spes') || lowerText.includes('budget') || 
+               lowerText.includes('cost') || lowerText.includes('finanz') || 
+               lowerText.includes('gestione')) {
+      viewSetter('finances');
+      showToast('Gestione Finanziaria aperta');
       setProcessing(false);
       return Promise.resolve();
     } else if (lowerText.includes('proiezion') || lowerText.includes('previs') || lowerText.includes('futur')) {

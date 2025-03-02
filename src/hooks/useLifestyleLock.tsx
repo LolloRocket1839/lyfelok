@@ -35,7 +35,7 @@ export type IncomeHistoryItem = {
   date?: string; // Optional date field
 };
 
-export type AppView = 'dashboard' | 'investments' | 'expenses' | 'projections';
+export type AppView = 'dashboard' | 'finances' | 'projections';
 
 export type ModalType = 'income' | 'expense' | 'deposit' | null;
 
@@ -132,7 +132,13 @@ export function useLifestyleLock() {
     };
     
     // Initialize the NLP processor
-    enhancedNlpProcessor.initialize();
+    try {
+      if (typeof enhancedNlpProcessor.initialize === 'function') {
+        enhancedNlpProcessor.initialize();
+      }
+    } catch (error) {
+      console.error('Failed to initialize NLP processor:', error);
+    }
     
     // Subscribe to ALL transaction types
     const unsubscribe = transactionStore.subscribe('ALL', handleTransaction);

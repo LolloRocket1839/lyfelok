@@ -1,6 +1,6 @@
 
 import { motion } from 'framer-motion';
-import { ArrowUpCircle, LogOut, LayoutDashboard, PiggyBank, Receipt, TrendingUp } from 'lucide-react';
+import { ArrowUpCircle, LogOut, LayoutDashboard, Wallet, TrendingUp } from 'lucide-react';
 import { AppView } from '@/hooks/useLifestyleLock';
 import { slideInRight } from '@/lib/animations';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,16 +18,14 @@ const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavPro
   // Map English view names to Italian
   const viewLabels = {
     dashboard: 'Dashboard',
-    investments: 'Investimenti',
-    expenses: 'Spese',
+    finances: 'Gestione Finanziaria',
     projections: 'Proiezioni'
   };
 
   // Icon mapping
   const viewIcons = {
     dashboard: <LayoutDashboard size={16} className="mr-2" />,
-    investments: <PiggyBank size={16} className="mr-2" />,
-    expenses: <Receipt size={16} className="mr-2" />,
+    finances: <Wallet size={16} className="mr-2" />,
     projections: <TrendingUp size={16} className="mr-2" />
   };
 
@@ -53,7 +51,7 @@ const HeaderNav = ({ view, setView, currentMonth, setActiveModal }: HeaderNavPro
       </div>
       
       <nav className="flex flex-wrap justify-center gap-2">
-        {(['dashboard', 'investments', 'expenses', 'projections'] as AppView[]).map((navItem) => (
+        {(['dashboard', 'finances', 'projections'] as AppView[]).map((navItem) => (
           <button 
             key={navItem}
             onClick={() => setView(navItem)} 
