@@ -4,7 +4,7 @@ import { useLifestyleLock } from '@/hooks/useLifestyleLock';
 import { useAuth } from '@/contexts/AuthContext';
 import enhancedNlpProcessor from '@/utils/enhancedNlpProcessor';
 import { transactionStore } from '@/utils/transactionStore';
-import { TransactionRouter, convertAnalysisToTransaction } from '@/utils/transactionRouter';
+import { TransactionRouter, convertAnalysisToTransaction, Transaction, TransactionType } from '@/utils/transactionRouter';
 import ElegantFeedbackUI from './ElegantFeedbackUI';
 import { mainCategories } from '@/utils/transactionStore';
 import ResponsiveCashTalk from './ResponsiveCashTalk';
@@ -21,7 +21,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
   const [lastTransactionId, setLastTransactionId] = useState<number | null>(null);
   
-  // New states for feedback UI
   const [feedbackNeeded, setFeedbackNeeded] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState<any>(null);
   const [suggestedCategories, setSuggestedCategories] = useState<any[]>([]);
@@ -45,58 +44,47 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     resetDepositForm,
   } = useLifestyleLock();
 
-  // Initialize the NLP processor and transaction router when the user is available
   useEffect(() => {
     if (user?.id) {
       enhancedNlpProcessor.setUserId(user.id);
       enhancedNlpProcessor.initialize();
       
-      // Initialize transaction router if not already done
       if (!transactionRouterRef.current) {
         transactionRouterRef.current = new TransactionRouter(transactionStore);
       }
     }
   }, [user]);
 
-  // Subscribe to transaction notifications
   useEffect(() => {
-    // Function to handle transactions based on type
     const handleTransaction = async (transaction: any) => {
       console.log('Transaction notification received:', transaction);
       
-      // Add the transaction to history and update last transaction
       setTransactionHistory(prev => [transaction, ...prev].slice(0, 10));
       setLastTransaction(transaction);
       
-      // Store the transaction ID for potential feedback
       setLastTransactionId(transactionHistory.length);
       
-      // Process with smart categorization
       if (user?.id && transaction.type === 'USCITA') {
         const result = await transactionStore.processTransactionWithSmartCategories(
           transaction,
           user.id
         );
         
-        // If feedback is needed, show the feedback UI
         if (result.requireFeedback) {
           setCurrentTransaction(result.transaction);
           setSuggestedCategories(result.suggestedCategories.length > 0 
             ? result.suggestedCategories 
             : mainCategories);
           setFeedbackNeeded(true);
-          return; // Wait for user feedback before updating UI
+          return;
         }
       }
       
-      // Update UI based on transaction type
       updateUIBasedOnTransaction(transaction);
     };
     
-    // Subscribe to ALL transaction types
     const unsubscribe = transactionStore.subscribe('ALL', handleTransaction);
     
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [
     handleAddDeposit, 
@@ -118,11 +106,9 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     user
   ]);
 
-  // Update UI based on transaction type
   const updateUIBasedOnTransaction = (transaction: any) => {
     switch(transaction.type) {
       case 'USCITA':
-        // Set expense data and submit
         setExpenseCategory(transaction.category || 'Altro');
         setExpenseSpent(transaction.amount.toString());
         setExpenseBaseline((transaction.metadata?.baselineAmount || transaction.amount).toString());
@@ -132,7 +118,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         break;
         
       case 'INVESTIMENTO':
-        // Set deposit data and submit
         setDepositAmount(transaction.amount.toString());
         setDepositCategory(transaction.category || '');
         setDepositDescription(transaction.description || '');
@@ -142,14 +127,12 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         break;
         
       case 'AUMENTO_REDDITO':
-        // Set new income data and submit
         setNewIncomeValue(transaction.amount.toString());
         setIncomeDate(transaction.date);
         handleIncomeIncrease();
         break;
         
       case 'ENTRATA':
-        // For now, we'll treat regular income similar to an income increase
         setNewIncomeValue(transaction.amount.toString());
         setIncomeDate(transaction.date);
         handleIncomeIncrease();
@@ -160,12 +143,10 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     }
   };
 
-  // Handle category selection from feedback UI
   const handleCategorySelection = async (categoryId: string) => {
     if (!currentTransaction || lastTransactionId === null || !user?.id) return;
     
     try {
-      // Process the feedback using the transaction store
       const result = await transactionStore.processFeedback(
         lastTransactionId,
         categoryId,
@@ -173,10 +154,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       );
       
       if (result.success && result.updatedTransaction) {
-        // Update the UI with the new category
         updateUIBasedOnTransaction(result.updatedTransaction);
-        
-        // Show confirmation toast
         showToast(`Categoria aggiornata a: ${categoryId}`);
       } else {
         showToast("Non è stato possibile aggiornare la categoria", "destructive");
@@ -185,27 +163,22 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       console.error('Error processing category feedback:', error);
       showToast("Errore nell'aggiornamento della categoria", "destructive");
     } finally {
-      // Reset feedback state
       setFeedbackNeeded(false);
       setCurrentTransaction(null);
       setSuggestedCategories([]);
     }
   };
 
-  // Handle dismissal of feedback UI
   const handleDismissFeedback = () => {
     if (currentTransaction) {
-      // If dismissed, use the original transaction
       updateUIBasedOnTransaction(currentTransaction);
     }
     
-    // Reset feedback state
     setFeedbackNeeded(false);
     setCurrentTransaction(null);
     setSuggestedCategories([]);
   };
 
-  // Analyze input text and process transaction
   const handleAnalyze = async (inputText: string): Promise<void> => {
     if (!inputText.trim() || !transactionRouterRef.current) {
       return Promise.reject(new Error("Empty input or router not initialized"));
@@ -213,7 +186,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     
     setProcessing(true);
     
-    // Handle navigational commands first
     const lowerText = inputText.toLowerCase();
     
     if (lowerText.includes('dashboard') || lowerText.includes('panoramica') || lowerText.includes('home')) {
@@ -238,24 +210,19 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       return Promise.resolve();
     }
     
-    // Process the transaction
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         try {
-          // Use enhanced NLP processor to analyze text
           const analysisResult = enhancedNlpProcessor.analyzeText(inputText);
           console.log('NLP Analysis result:', analysisResult);
           
-          // Convert analysis to transaction
           const transaction = convertAnalysisToTransaction(analysisResult);
           console.log('Converted transaction:', transaction);
           
-          // Route transaction to the appropriate handler
           if (transactionRouterRef.current) {
             const routedTransaction = transactionRouterRef.current.route(transaction);
             console.log('Routed transaction:', routedTransaction);
             
-            // Show toast notification based on transaction type
             showTransactionToast(routedTransaction);
           }
           
@@ -271,7 +238,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     });
   };
 
-  // Handle form submission from the unified interface
   const handleFormSubmit = async (formData: any): Promise<void> => {
     console.log('Form data received:', formData);
     
@@ -279,10 +245,9 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       return Promise.reject(new Error("Missing required fields or user not authenticated"));
     }
     
-    // Construct a transaction from form data
     const transaction: Transaction = {
       type: formData.type === 'expense' ? 'USCITA' : 
-            formData.type === 'investment' ? 'INVESTIMENTO' : 'ENTRATA',
+            formData.type === 'investment' ? 'INVESTIMENTO' : 'ENTRATA' as TransactionType,
       amount: parseFloat(formData.amount),
       description: formData.description || formData.category,
       category: formData.category,
@@ -296,14 +261,12 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     
     console.log('Constructed transaction from form:', transaction);
     
-    // Route the transaction using the existing router
     return new Promise((resolve, reject) => {
       try {
         if (transactionRouterRef.current) {
           const routedTransaction = transactionRouterRef.current.route(transaction);
           console.log('Routed transaction from form:', routedTransaction);
           
-          // Show toast notification based on transaction type
           showTransactionToast(routedTransaction);
           resolve();
         } else {
@@ -316,17 +279,15 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     });
   };
 
-  // Show a toast notification for the transaction
   const showToast = (message: string, variant: 'default' | 'destructive' = 'default') => {
     toast({
       title: variant === 'destructive' ? "Errore" : "Cash Talk",
       description: message,
       variant: variant,
-      duration: 3000, // 3 seconds
+      duration: 3000,
     });
   };
 
-  // Show a toast notification based on transaction type
   const showTransactionToast = (transaction: any) => {
     const { type, amount, category } = transaction;
     
@@ -358,7 +319,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         lastTransaction={lastTransaction}
       />
       
-      {/* Render Feedback UI when needed */}
       {feedbackNeeded && currentTransaction && (
         <ElegantFeedbackUI
           transaction={currentTransaction}
