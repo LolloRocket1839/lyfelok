@@ -148,7 +148,7 @@ const enhancedNlpProcessor = {
       'doc': 'dottore',
       'med': 'medico',
       'ospe': 'ospedale',
-      'farm': 'farmacia',
+      'medic': 'farmacia', // Changed from duplicate 'farm' to 'medic'
       'spesa': 'supermercato'
     };
     
