@@ -92,32 +92,32 @@ const ExpensesView = ({
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      {/* Header */}
-      <div className="bg-[#12162B] h-[160px] flex items-end justify-center pb-8">
-        <h1 className="text-white text-[22px] font-medium">Spese</h1>
+    <div className="w-full bg-white pb-20">
+      {/* Header - Adjusted for responsive design */}
+      <div className="bg-[#12162B] h-[120px] md:h-[160px] flex items-end justify-center pb-6 md:pb-8">
+        <h1 className="text-white text-xl md:text-[22px] font-medium">Spese</h1>
       </div>
 
-      <div className="px-6 -mt-4">
-        {/* Budget Summary Card */}
+      <div className="px-4 md:px-6 lg:px-8 -mt-4 max-w-7xl mx-auto">
+        {/* Budget Summary Card - Responsive width */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={fadeIn}
-          className="bg-white rounded-xl shadow-sm p-4 max-w-[342px] mx-auto h-[90px] mb-5"
+          className="bg-white rounded-xl shadow-sm p-4 mx-auto md:max-w-md lg:max-w-lg h-[90px] mb-5"
         >
           <div className="text-sm text-gray-500 font-medium mb-1">Budget Mensile</div>
           <div className="flex items-baseline">
-            <span className="text-2xl font-semibold text-gray-800">{formatCurrency(totalSpent)}</span>
-            <span className="text-base text-gray-500 ml-2">/ {formatCurrency(totalBudget)}</span>
+            <span className="text-xl md:text-2xl font-semibold text-gray-800">{formatCurrency(totalSpent)}</span>
+            <span className="text-sm md:text-base text-gray-500 ml-2">/ {formatCurrency(totalBudget)}</span>
           </div>
           <Progress value={spentPercentage} className="h-[3px] mt-2" />
         </motion.div>
 
-        {/* Filters */}
+        {/* Filters - Responsive design */}
         <motion.div
           variants={fadeIn}
-          className="bg-[#F7F9FC] rounded-full max-w-[342px] mx-auto h-[45px] flex items-center justify-between px-4 mb-5"
+          className="bg-[#F7F9FC] rounded-full mx-auto md:max-w-md lg:max-w-lg h-[45px] flex items-center justify-between px-4 mb-5"
         >
           <div className="flex items-center">
             <button className="text-sm font-medium text-gray-700">{periodFilter}</button>
@@ -130,10 +130,10 @@ const ExpensesView = ({
           </div>
         </motion.div>
         
-        {/* Expenses List */}
+        {/* Expenses List - Responsive grid for larger screens */}
         <motion.div 
           variants={fadeIn}
-          className="space-y-3 max-w-[342px] mx-auto"
+          className="space-y-3 mx-auto md:max-w-md lg:max-w-none lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:space-y-0"
         >
           {expenses.map((expense) => {
             const colors = getCategoryColor(expense.category);
@@ -141,7 +141,7 @@ const ExpensesView = ({
               <motion.div
                 key={expense.id}
                 variants={slideUp}
-                className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between h-[72px] shadow-sm"
+                className="bg-white border border-gray-100 rounded-xl p-4 flex items-center justify-between h-[72px] shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => handleEditExpense(expense)}
               >
                 <div className="flex items-center">
@@ -165,10 +165,20 @@ const ExpensesView = ({
             );
           })}
         </motion.div>
+        
+        {/* Add Expense Button - Visible only on larger screens */}
+        <div className="hidden md:block mt-6 text-center">
+          <button 
+            onClick={() => setActiveModal('expense')}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm transition-colors inline-flex items-center"
+          >
+            <span className="mr-2">+</span> Aggiungi Spesa
+          </button>
+        </div>
       </div>
 
-      {/* Cash Talk Input (Fixed at bottom) */}
-      <div className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[342px]">
+      {/* Cash Talk Input (Fixed at bottom) - Only visible on mobile */}
+      <div className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[342px] md:hidden">
         <div className="flex items-center w-full bg-white rounded-full border border-gray-200 h-[40px] px-4">
           <input
             type="text"
