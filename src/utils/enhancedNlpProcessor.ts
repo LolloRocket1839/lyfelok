@@ -1,4 +1,3 @@
-
 import { Transaction } from './transactionRouter';
 import { transactionStore } from './transactionStore';
 import { knowledgeBase } from './nlp/knowledgeBase';
@@ -7,9 +6,8 @@ import { EntityExtractor } from './nlp/entityExtractor';
 import { TransactionProcessor } from './nlp/transactionProcessor';
 import { TextProcessor } from './nlp/textProcessor';
 import { ProcessedText, ClassificationResult, ExtractedEntities } from './nlp/types';
-import { autoCategorize, addCustomRule, createMerchantPattern } from './autoCategorization';
+import { autoCategorize, addCustomRule, createMerchantPattern } from './categorization';
 
-// Enhanced NLP processor with more advanced capabilities
 const enhancedNlpProcessor = {
   userId: null as string | null,
   

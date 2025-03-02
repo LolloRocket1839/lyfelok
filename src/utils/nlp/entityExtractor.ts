@@ -1,6 +1,5 @@
-
 import { Entity, ExtractedEntities, ProcessedText, ClassificationResult } from './types';
-import { autoCategorize } from '../autoCategorization';
+import { autoCategorize } from '../categorization';
 
 export class EntityExtractor {
   static extract(processedText: ProcessedText, classification: ClassificationResult): ExtractedEntities {
