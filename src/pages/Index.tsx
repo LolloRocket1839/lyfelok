@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
@@ -107,27 +106,28 @@ const Index = () => {
             lifestyleAllocation={lifestyleAllocation}
           />
         );
-      case 'investments':
+      case 'finances':
         return (
-          <InvestmentsView
-            deposits={deposits}
-            totalDeposits={totalDeposits}
-            setActiveModal={setActiveModal}
-            handleDeleteDeposit={handleDeleteDeposit}
-            startEditDeposit={startEditDeposit}
-          />
-        );
-      case 'expenses':
-        return (
-          <ExpensesView
-            expenses={expenses}
-            setExpenses={setExpenses}
-            setActiveModal={setActiveModal}
-            setEditingExpense={setEditingExpense}
-            setExpenseCategory={setExpenseCategory}
-            setExpenseSpent={setExpenseSpent}
-            setExpenseBaseline={setExpenseBaseline}
-          />
+          <>
+            <InvestmentsView
+              deposits={deposits}
+              totalDeposits={totalDeposits}
+              setActiveModal={setActiveModal}
+              handleDeleteDeposit={handleDeleteDeposit}
+              startEditDeposit={startEditDeposit}
+            />
+            <div className="mt-8">
+              <ExpensesView
+                expenses={expenses}
+                setExpenses={setExpenses}
+                setActiveModal={setActiveModal}
+                setEditingExpense={setEditingExpense}
+                setExpenseCategory={setExpenseCategory}
+                setExpenseSpent={setExpenseSpent}
+                setExpenseBaseline={setExpenseBaseline}
+              />
+            </div>
+          </>
         );
       case 'projections':
         return (
@@ -174,7 +174,7 @@ const Index = () => {
                       <p className="text-sm mt-1">Stai spendendo €{totalSpent - baselineLifestyle} in più rispetto al tuo budget di base.</p>
                     </div>
                     <button 
-                      onClick={() => setView('expenses')}
+                      onClick={() => setView('finances')}
                       className="px-3 py-1.5 bg-white text-red-600 rounded-lg shadow-sm text-sm border border-red-100 hover:bg-red-50 transition-colors"
                     >
                       Rivedi Budget

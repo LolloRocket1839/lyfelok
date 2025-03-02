@@ -31,7 +31,7 @@ export class NlpKnowledgeBase {
           "trasporti": ["transport", "travel", "trasporti", "trasporto", "treno", "metro", "bus", "taxi", "uber", "carburante", "benzina", "gasolio", "autostrada", "pedaggio"],
           "casa": ["house", "home", "casa", "affitto", "mutuo", "bollette", "condominio", "arredamento", "manutenzione"],
           "salute": ["health", "medical", "salute", "medico", "farmacia", "dottore", "dentista", "terapia", "visita"],
-          "entertainment": ["entertainment", "leisure", "intrattenimento", "svago", "divertimento", "cinema", "teatro", "concerto", "hobby", "streaming", "abbonamento"],
+          "intrattenimento": ["entertainment", "leisure", "intrattenimento", "svago", "divertimento", "cinema", "teatro", "concerto", "hobby", "streaming", "abbonamento"],
           "educazione": ["education", "learning", "educazione", "formazione", "corso", "università", "libri", "studio"],
           "abbigliamento": ["clothing", "abbigliamento", "vestiti", "scarpe", "accessori", "moda"],
           "tecnologia": ["technology", "tech", "tecnologia", "elettronica", "dispositivi", "computer", "smartphone", "gadget"],
