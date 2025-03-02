@@ -37,9 +37,9 @@ const enhancedNlpProcessor = {
       
       // Step 4: Check for emoji indicators in text which might help with categorization
       const emojiMatch = enhancedNlpProcessor.extractEmojisFromText(text);
-      if (emojiMatch && !entities.category) {
+      if (emojiMatch && !classification.subcategory) {
         console.log(`Found emoji indicator: ${emojiMatch.emoji} for category ${emojiMatch.category}`);
-        entities.category = emojiMatch.category;
+        classification.subcategory = emojiMatch.category;
       }
       
       // Step 5: Process into a transaction
