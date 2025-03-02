@@ -39,7 +39,10 @@ export const userCategoryMappings = {
         .select('*')
         .eq('user_id', userId);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching user mappings:', error);
+        throw error;
+      }
       
       // Transform to more usable format
       const mappings: Record<string, Record<string, number>> = {};
@@ -62,7 +65,10 @@ export const userCategoryMappings = {
         .select('keyword, category')
         .eq('user_id', userId);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching direct user mappings:', error);
+        throw error;
+      }
       
       // Transform to a simple keyword -> category mapping
       const directMappings: Record<string, string> = {};
@@ -159,43 +165,67 @@ export const userCategoryMappings = {
   // Update a user's mappings with feedback
   async updateMappings(description: string, categoryId: string, userId: string): Promise<boolean> {
     try {
+      console.log('Updating mappings for:', {
+        description,
+        categoryId,
+        userId
+      });
+      
       // Extract keywords from description
       const keywords = description
         .toLowerCase()
         .split(/\s+/)
         .filter(word => word.length > 2);
       
+      if (keywords.length === 0) {
+        console.warn('No valid keywords extracted from description');
+        return false;
+      }
+      
       // 1. First update direct mappings (highest priority)
-      await this.updateDirectMappings(keywords, categoryId, userId);
+      const directResult = await this.updateDirectMappings(keywords, categoryId, userId);
+      
+      if (!directResult) {
+        console.warn('Direct mapping update failed');
+      }
       
       // 2. Also update probabilistic mappings
       for (const keyword of keywords) {
         // Check if mapping already exists for this user and keyword
-        const { data: existing } = await supabase
+        const { data: existing, error: fetchError } = await supabase
           .from('user_category_mappings')
           .select('*')
           .eq('user_id', userId)
           .eq('keyword', keyword)
           .maybeSingle();
         
+        if (fetchError) {
+          console.error('Error fetching existing mapping:', fetchError);
+          continue;
+        }
+        
         if (existing) {
           // Update existing mapping
           const categories = existing.categories || {};
           categories[categoryId] = (categories[categoryId] ? Number(categories[categoryId]) : 0) + 1;
           
-          await supabase
+          const { error: updateError } = await supabase
             .from('user_category_mappings')
             .update({ 
               categories: categories,
               updated_at: new Date().toISOString()
             })
             .eq('id', existing.id);
+            
+          if (updateError) {
+            console.error('Error updating existing mapping:', updateError);
+          }
         } else {
           // Create new mapping
           const categories: Record<string, number> = {};
           categories[categoryId] = 1;
           
-          await supabase
+          const { error: insertError } = await supabase
             .from('user_category_mappings')
             .insert({
               user_id: userId,
@@ -204,6 +234,10 @@ export const userCategoryMappings = {
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             });
+            
+          if (insertError) {
+            console.error('Error creating new mapping:', insertError);
+          }
         }
       }
       
@@ -218,6 +252,11 @@ export const userCategoryMappings = {
   async updateDirectMappings(keywords: string[], categoryId: string, userId: string): Promise<boolean> {
     try {
       console.log(`Updating direct mappings for ${keywords.length} keywords to category: ${categoryId}`);
+      
+      if (keywords.length === 0 || !categoryId || !userId) {
+        console.error('Missing required parameters for direct mapping update');
+        return false;
+      }
       
       // Create upsert data for all keywords
       const updates = keywords.map(keyword => ({
@@ -235,6 +274,7 @@ export const userCategoryMappings = {
         });
       
       if (error) {
+        console.error('Error upserting direct mappings:', error);
         throw error;
       }
       
@@ -276,8 +316,13 @@ export const userCategoryMappings = {
         .eq('keyword', keyword)
         .maybeSingle();
       
-      if (error || !data) {
+      if (error) {
         console.error('Verification query failed:', error);
+        return false;
+      }
+      
+      if (!data) {
+        console.error('No data returned from verification query');
         return false;
       }
       
@@ -293,19 +338,26 @@ export const userCategoryMappings = {
     try {
       console.log(`Force saving direct mapping: ${keyword} -> ${category}`);
       
+      // First, try to delete any existing mapping
+      await supabase
+        .from('user_direct_mappings')
+        .delete()
+        .eq('user_id', userId)
+        .eq('keyword', keyword);
+      
+      // Then insert the new mapping
       const { error } = await supabase
         .from('user_direct_mappings')
-        .upsert({
+        .insert({
           user_id: userId,
           keyword: keyword,
           category: category,
           updated_at: new Date().toISOString(),
           force_flag: true
-        }, {
-          onConflict: 'user_id,keyword'
         });
       
       if (error) {
+        console.error('Force insert failed:', error);
         throw error;
       }
       
@@ -326,7 +378,10 @@ export const globalCategoryMappings = {
         .from('global_category_mappings')
         .select('*');
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching global mappings:', error);
+        throw error;
+      }
       
       // Transform to more usable format
       const mappings: Record<string, Record<string, number>> = {};
@@ -345,18 +400,23 @@ export const globalCategoryMappings = {
   async updateGlobalMapping(keyword: string, categoryId: string): Promise<boolean> {
     try {
       // Check if global mapping already exists
-      const { data: existing } = await supabase
+      const { data: existing, error: fetchError } = await supabase
         .from('global_category_mappings')
         .select('*')
         .eq('keyword', keyword)
         .maybeSingle();
+      
+      if (fetchError) {
+        console.error('Error fetching global mapping:', fetchError);
+        return false;
+      }
       
       if (existing) {
         // Update existing mapping
         const categories = existing.categories || {};
         categories[categoryId] = (categories[categoryId] ? Number(categories[categoryId]) : 0) + 1;
         
-        await supabase
+        const { error: updateError } = await supabase
           .from('global_category_mappings')
           .update({ 
             categories: categories,
@@ -364,12 +424,17 @@ export const globalCategoryMappings = {
             updated_at: new Date().toISOString()
           })
           .eq('id', existing.id);
+          
+        if (updateError) {
+          console.error('Error updating global mapping:', updateError);
+          return false;
+        }
       } else {
         // Create new mapping
         const categories: Record<string, number> = {};
         categories[categoryId] = 1;
         
-        await supabase
+        const { error: insertError } = await supabase
           .from('global_category_mappings')
           .insert({
             keyword: keyword,
@@ -378,6 +443,11 @@ export const globalCategoryMappings = {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
+          
+        if (insertError) {
+          console.error('Error creating global mapping:', insertError);
+          return false;
+        }
       }
       
       return true;

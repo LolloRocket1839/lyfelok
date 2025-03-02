@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
@@ -62,7 +63,13 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       setTransactionHistory(prev => [transaction, ...prev].slice(0, 10));
       setLastTransaction(transaction);
       
-      setLastTransactionId(transactionHistory.length);
+      // Store the transaction ID for later reference
+      if (transaction.id) {
+        setLastTransactionId(transaction.id);
+      } else {
+        // Fallback to using the index in history if no ID is present
+        setLastTransactionId(transactionHistory.length);
+      }
       
       if (user?.id && transaction.type === 'USCITA') {
         const result = await transactionStore.processTransactionWithSmartCategories(
@@ -144,19 +151,36 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   };
 
   const handleCategorySelection = async (categoryId: string) => {
-    if (!currentTransaction || lastTransactionId === null || !user?.id) return;
+    if (!currentTransaction || !lastTransactionId || !user?.id) {
+      console.error('Missing required data for category update:', {
+        transaction: currentTransaction,
+        id: lastTransactionId,
+        userId: user?.id
+      });
+      showToast("Dati mancanti per l'aggiornamento della categoria", "destructive");
+      return;
+    }
     
     try {
+      console.log('Processing category feedback with:', {
+        transactionId: lastTransactionId,
+        categoryId: categoryId,
+        userId: user.id
+      });
+      
       const result = await transactionStore.processFeedback(
         lastTransactionId,
         categoryId,
         user.id
       );
       
+      console.log('Feedback processing result:', result);
+      
       if (result.success && result.updatedTransaction) {
         updateUIBasedOnTransaction(result.updatedTransaction);
         showToast(`Categoria aggiornata a: ${categoryId}`);
       } else {
+        console.error('Feedback processing failed:', result.error || 'Unknown error');
         showToast("Non è stato possibile aggiornare la categoria", "destructive");
       }
     } catch (error) {
@@ -277,6 +301,13 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     });
   };
 
+  const handleClose = () => {
+    // Close the cash talk interface
+    setFeedbackNeeded(false);
+    setCurrentTransaction(null);
+    setSuggestedCategories([]);
+  };
+
   const showToast = (message: string, variant: 'default' | 'destructive' = 'default') => {
     toast({
       title: variant === 'destructive' ? "Errore" : "Cash Talk",
@@ -315,6 +346,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         isProcessing={processing}
         categories={mainCategories}
         lastTransaction={lastTransaction}
+        onClose={handleClose}
       />
       
       {feedbackNeeded && currentTransaction && (
