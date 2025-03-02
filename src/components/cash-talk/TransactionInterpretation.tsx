@@ -8,8 +8,15 @@ interface TransactionInterpretationProps {
 }
 
 export default function TransactionInterpretation({ transaction }: TransactionInterpretationProps) {
-  // Determine transaction type for display
-  const type = transaction.type === 'ENTRATA' ? 'entrata' : 'spesa';
+  // Determine transaction type for display - handle all possible transaction types
+  let type = 'spesa';
+  if (transaction.type === 'ENTRATA') {
+    type = 'entrata';
+  } else if (transaction.type === 'INVESTIMENTO') {
+    type = 'investimento';
+  } else if (transaction.type === 'USCITA') {
+    type = 'spesa';
+  }
   
   // Icone per i tipi di transazione
   const getTypeIcon = () => {
