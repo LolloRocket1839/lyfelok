@@ -29,59 +29,111 @@ const receiptProcessor = {
     // Preprocess the receipt text
     const normalizedText = receiptText.toLowerCase().trim();
     
-    // Extract amount using regex
+    // Extract amount using regex - looking for currency symbols and numbers
     let amount: number | null = null;
-    const amountMatch = normalizedText.match(/(?:€|eur|euro)?\s*(\d+(?:[.,]\d{1,2})?)(?:\s*(?:€|eur|euro))?/i);
-    if (amountMatch) {
-      amount = parseFloat(amountMatch[1].replace(',', '.'));
-    }
-    
-    // Try to extract merchant/store name
-    let merchantName = '';
-    const lines = normalizedText.split('\n');
-    
-    // Usually the first line of a receipt is the store name
-    if (lines.length > 0) {
-      merchantName = lines[0].trim();
+    const amountMatches = normalizedText.match(/(?:€|eur|euro)?\s*(\d+(?:[.,]\d{1,2})?)(?:\s*(?:€|eur|euro))?/gi);
+    if (amountMatches) {
+      // Find the largest amount - usually the total
+      const amounts = amountMatches.map(match => {
+        const numStr = match.replace(/[^0-9,.]/g, '').replace(',', '.');
+        return parseFloat(numStr);
+      }).filter(num => !isNaN(num));
       
-      // If the first line contains currency symbols or numbers, it's probably not the store name
-      if (/[€$£0-9]/.test(merchantName)) {
-        // Look for known store name patterns
-        const storePatterns = [
-          /(?:supermercato|supermarket)\s+([a-z0-9\s]+)/i,
-          /(?:negozio|store)\s+([a-z0-9\s]+)/i,
-          /(?:ristorante|restaurant)\s+([a-z0-9\s]+)/i
-        ];
-        
-        for (const pattern of storePatterns) {
-          const match = normalizedText.match(pattern);
-          if (match) {
-            merchantName = match[1].trim();
-            break;
-          }
-        }
+      if (amounts.length > 0) {
+        // Sort amounts and take the largest as it's likely the total
+        amount = Math.max(...amounts);
       }
     }
     
-    // If we can't extract merchant name, look for key words
-    if (!merchantName) {
-      const merchantKeywords = [
-        'esselunga', 'conad', 'coop', 'carrefour', 'lidl', 'aldi', 
-        'eurospin', 'iper', 'pam', 'simply', 'auchan', 'penny market',
-        'despar', 'tigros', 'md', 'bennet', 'famila', 'interspar'
-      ];
-      
-      for (const keyword of merchantKeywords) {
-        if (normalizedText.includes(keyword)) {
+    // Try to extract date using regex
+    let date = new Date().toISOString().split('T')[0]; // Default to today
+    const datePatterns = [
+      // DD/MM/YYYY or DD-MM-YYYY
+      /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/,
+      // DD MMM YYYY (like 15 Gen 2023)
+      /(\d{1,2})\s+(gen|feb|mar|apr|mag|giu|lug|ago|set|ott|nov|dic)\w*\s+(\d{2,4})/i
+    ];
+    
+    for (const pattern of datePatterns) {
+      const match = normalizedText.match(pattern);
+      if (match) {
+        // Try to parse the date, falling back to today if invalid
+        try {
+          const day = parseInt(match[1]);
+          let month = 0;
+          
+          if (match[2].match(/^\d+$/)) {
+            // If month is numeric
+            month = parseInt(match[2]) - 1; // JS months are 0-based
+          } else {
+            // If month is textual (Italian abbreviation)
+            const monthNames = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+            const monthAbbr = match[2].substring(0, 3).toLowerCase();
+            month = monthNames.indexOf(monthAbbr);
+          }
+          
+          let year = parseInt(match[3]);
+          if (year < 100) year += 2000; // Convert 2-digit year to 4-digit
+          
+          const dateObj = new Date(year, month, day);
+          if (!isNaN(dateObj.getTime())) {
+            date = dateObj.toISOString().split('T')[0];
+          }
+        } catch (err) {
+          console.warn('Date parsing error:', err);
+        }
+        break;
+      }
+    }
+    
+    // Try to extract merchant/store name with improved detection
+    let merchantName = '';
+    const lines = normalizedText.split('\n');
+    
+    // Common merchant indicators
+    const merchantKeywords = [
+      'esselunga', 'conad', 'coop', 'carrefour', 'lidl', 'aldi', 
+      'eurospin', 'iper', 'pam', 'simply', 'auchan', 'penny market',
+      'despar', 'tigros', 'md', 'bennet', 'famila', 'interspar',
+      'supermercato', 'market', 'negozio', 'ristorante', 'pizzeria',
+      'bar', 'caffè', 'farmacia', 'libreria', 'tabacchi'
+    ];
+    
+    // First try to find known merchants
+    for (const keyword of merchantKeywords) {
+      if (normalizedText.includes(keyword)) {
+        // Find the line containing the keyword
+        const merchantLine = lines.find(line => line.includes(keyword));
+        if (merchantLine) {
+          merchantName = merchantLine.trim();
+          break;
+        } else {
           merchantName = keyword;
           break;
         }
       }
     }
     
+    // If no known merchant, try first line heuristic
+    if (!merchantName && lines.length > 0) {
+      // Usually the first line of a receipt is the store name if it's not a number or date
+      const firstLine = lines[0].trim();
+      if (firstLine && !firstLine.match(/^\d/) && firstLine.length > 3) {
+        merchantName = firstLine;
+      }
+    }
+    
+    // Determine confidence level
+    let confidence = 'Bassa affidabilità';
+    if (amount && merchantName) {
+      confidence = 'Alta affidabilità';
+    } else if (amount || merchantName) {
+      confidence = 'Media affidabilità';
+    }
+    
     // Build description combining merchant and amount
     const description = merchantName 
-      ? `${merchantName.charAt(0).toUpperCase() + merchantName.slice(1)} ${amount ? `€${amount}` : ''}`
+      ? `${merchantName.charAt(0).toUpperCase() + merchantName.slice(1)} ${amount ? `€${amount.toFixed(2)}` : ''}`
       : receiptText.split('\n')[0];
     
     // Create a transaction object using the extracted data
@@ -89,15 +141,30 @@ const receiptProcessor = {
       type: 'USCITA',
       amount: amount || 0,
       description: description.trim(),
-      date: new Date().toISOString().split('T')[0],
+      date: date,
       metadata: {
         source: 'receipt_image',
-        rawText: receiptText
+        rawText: receiptText,
+        merchant: merchantName || undefined,
+        confidence: confidence
       }
     };
     
     // Use the enhanced NLP processor to categorize the transaction
-    return enhancedNlpProcessor.processText(transaction.description);
+    const processedTransaction = enhancedNlpProcessor.processText(transaction.description);
+    
+    // Combine the NLP categorization with our receipt data
+    if (processedTransaction) {
+      return {
+        ...processedTransaction,
+        metadata: {
+          ...processedTransaction.metadata,
+          ...transaction.metadata
+        }
+      };
+    }
+    
+    return transaction;
   },
   
   /**
@@ -121,13 +188,21 @@ const receiptProcessor = {
       }
       
       if (receiptData.items.length > 1) {
-        description += ` and ${receiptData.items.length - 1} more items`;
+        description += ` e altri ${receiptData.items.length - 1} articoli`;
       }
     }
     
     // If we still don't have a description, use the text
     if (!description && receiptData.text) {
       description = receiptData.text.split('\n')[0];
+    }
+    
+    // Determine confidence level
+    let confidence = 'Bassa affidabilità';
+    if (receiptData.amount && receiptData.merchant) {
+      confidence = 'Alta affidabilità';
+    } else if (receiptData.amount || receiptData.merchant) {
+      confidence = 'Media affidabilità';
     }
     
     // Create a transaction object
@@ -140,12 +215,26 @@ const receiptProcessor = {
         source: 'receipt_image',
         rawText: receiptData.text,
         merchant: receiptData.merchant,
-        items: receiptData.items
+        items: receiptData.items,
+        confidence: confidence
       }
     };
     
     // Use the enhanced NLP processor to categorize the transaction
-    return enhancedNlpProcessor.processText(transaction.description);
+    const processedTransaction = enhancedNlpProcessor.processText(transaction.description);
+    
+    // Combine the NLP categorization with our receipt data
+    if (processedTransaction) {
+      return {
+        ...processedTransaction,
+        metadata: {
+          ...processedTransaction.metadata,
+          ...transaction.metadata
+        }
+      };
+    }
+    
+    return transaction;
   }
 };
 

@@ -1,6 +1,6 @@
 
 import { motion } from 'framer-motion';
-import { Check, ShoppingBag, ArrowDown, TrendingUp, Calendar, Tag, Receipt } from 'lucide-react';
+import { Check, ShoppingBag, ArrowDown, TrendingUp, Calendar, Tag, Receipt, Store, CreditCard } from 'lucide-react';
 import { Transaction } from '@/utils/transactionRouter';
 
 interface TransactionInterpretationProps {
@@ -34,6 +34,16 @@ export default function TransactionInterpretation({ transaction }: TransactionIn
   
   // Check if transaction came from a receipt
   const isFromReceipt = transaction.metadata?.source === 'receipt_image';
+  
+  // Get payment method icon if available
+  const getPaymentMethodIcon = () => {
+    if (transaction.metadata?.paymentMethod) {
+      if (transaction.metadata.paymentMethod.toLowerCase().includes('card')) {
+        return <CreditCard size={24} />;
+      }
+    }
+    return null;
+  };
 
   return (
     <motion.div
@@ -74,7 +84,7 @@ export default function TransactionInterpretation({ transaction }: TransactionIn
           </div>
           <div>
             <p className="text-sm text-slate-500">Importo</p>
-            <p className="font-medium text-slate-900">€{transaction.amount.toFixed(2)}</p>
+            <p className="font-medium text-slate-900">€{Math.abs(transaction.amount).toFixed(2)}</p>
           </div>
         </div>
         
@@ -101,11 +111,23 @@ export default function TransactionInterpretation({ transaction }: TransactionIn
         {isFromReceipt && transaction.metadata?.merchant && (
           <div className="flex items-start gap-3 md:col-span-2">
             <div className="p-2 bg-slate-100 rounded-lg">
-              <ShoppingBag size={24} />
+              <Store size={24} />
             </div>
             <div>
               <p className="text-sm text-slate-500">Esercente</p>
               <p className="font-medium text-slate-900">{transaction.metadata.merchant}</p>
+            </div>
+          </div>
+        )}
+        
+        {transaction.metadata?.paymentMethod && (
+          <div className="flex items-start gap-3 md:col-span-2">
+            <div className="p-2 bg-slate-100 rounded-lg">
+              <CreditCard size={24} />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Metodo di Pagamento</p>
+              <p className="font-medium text-slate-900">{transaction.metadata.paymentMethod}</p>
             </div>
           </div>
         )}
