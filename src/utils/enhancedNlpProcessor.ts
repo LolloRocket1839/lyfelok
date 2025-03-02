@@ -1,4 +1,3 @@
-
 import { Transaction } from './transactionRouter';
 import { transactionStore } from './transactionStore';
 import { knowledgeBase } from './nlp/knowledgeBase';
@@ -23,7 +22,6 @@ const enhancedNlpProcessor = {
     console.log('NLP processor user ID set:', userId);
   },
   
-  // Process natural language input from the user
   processText: (text: string): Transaction | null => {
     try {
       if (!text || text.trim() === '') {
@@ -31,31 +29,18 @@ const enhancedNlpProcessor = {
         return null;
       }
       
-      // Preprocess text to handle common Italian abbreviations and partial words
       const preprocessedText = enhancedNlpProcessor.preprocessText(text);
       console.log('Preprocessed text:', preprocessedText);
       
-      // Step 1: Basic text processing
       const processedText: ProcessedText = TextProcessor.processText(preprocessedText);
       
-      // Step 2: Classify the intent
       const classification: ClassificationResult = Classifier.classify(processedText);
       
-      // Step 3: Extract entities
       const entities: ExtractedEntities = EntityExtractor.extract(processedText, classification);
       
-      // Step 4: Check for emoji indicators in text which might help with categorization
-      const emojiMatch = enhancedNlpProcessor.extractEmojisFromText(preprocessedText);
-      if (emojiMatch && !classification.subcategory) {
-        console.log(`Found emoji indicator: ${emojiMatch.emoji} for category ${emojiMatch.category}`);
-        classification.subcategory = emojiMatch.category;
-      }
-      
-      // Step 5: Process into a transaction
       let transaction = TransactionProcessor.processIntoTransaction(processedText, classification, entities);
       
       if (transaction) {
-        // Handle potential missing fields with smart defaults
         if (!transaction.description || transaction.description.trim() === '') {
           transaction.description = enhancedNlpProcessor.generateDefaultDescription(
             classification.type || 'expense', 
@@ -65,20 +50,15 @@ const enhancedNlpProcessor = {
         }
         
         if (!transaction.amount || transaction.amount <= 0) {
-          // Provide a default placeholder amount that clearly indicates it's a placeholder
           transaction.amount = 0.01;
         }
         
-        // Step 6: Enrich transaction with additional data
         transaction = EntityExtractor.enrichTransactionData(transaction, preprocessedText);
         
-        // Log the transaction for debugging purposes
         console.log('NLP processed transaction:', transaction);
         
-        // Add the transaction to the store
         const processedTransaction = transactionStore.addTransaction(transaction);
         
-        // Step 7: Learn from this transaction to improve future categorization
         enhancedNlpProcessor.learnFromTransaction(preprocessedText, transaction);
         
         return processedTransaction;
@@ -90,9 +70,7 @@ const enhancedNlpProcessor = {
     }
   },
   
-  // Preprocess text to handle Italian abbreviations and partial words
   preprocessText: (text: string): string => {
-    // Common Italian abbreviations and their full forms
     const abbreviations: {[key: string]: string} = {
       'rest': 'ristorante',
       'ristr': 'ristorante',
@@ -148,23 +126,19 @@ const enhancedNlpProcessor = {
       'doc': 'dottore',
       'med': 'medico',
       'ospe': 'ospedale',
-      'medic': 'farmacia', // Changed from duplicate 'farm' to 'medic'
+      'medic': 'farmacia',
       'spesa': 'supermercato'
     };
     
-    // Special handling for mini-snippets that could be expense descriptions
     const normalizedText = text.toLowerCase();
     
-    // Check if the text is just a category name or abbreviation
     for (const [abbr, full] of Object.entries(abbreviations)) {
-      // Check if the text starts with this abbreviation
       if (normalizedText.startsWith(abbr)) {
         console.log(`Expanded abbreviation: ${abbr} -> ${full}`);
         return `spesa ${full} ${text.substring(abbr.length).trim()}`;
       }
     }
     
-    // Handle common Italian formats for money with default verb
     const moneyRegex = /^\s*(\d+(?:[.,]\d+)?)\s*(?:€|eur|euro)?\s*$/i;
     const moneyMatch = normalizedText.match(moneyRegex);
     if (moneyMatch) {
@@ -172,21 +146,17 @@ const enhancedNlpProcessor = {
       return `spesa di ${moneyMatch[0]}`;
     }
     
-    // Handle snippet with just a number (likely an amount)
     if (/^\s*\d+(?:[.,]\d+)?\s*$/.test(normalizedText)) {
       console.log('Detected number-only input, adding default verb and currency');
       return `spesa di ${normalizedText} euro`;
     }
     
-    // Search and replace abbreviations in text
     let processedText = normalizedText;
     for (const [abbr, full] of Object.entries(abbreviations)) {
-      // Replace abbreviated forms with their full forms
       const regex = new RegExp(`\\b${abbr}\\b`, 'gi');
       processedText = processedText.replace(regex, full);
     }
     
-    // If processed text is different, we've made expansions
     if (processedText !== normalizedText) {
       console.log(`Expanded text: "${normalizedText}" -> "${processedText}"`);
       return processedText;
@@ -195,9 +165,7 @@ const enhancedNlpProcessor = {
     return text;
   },
   
-  // Generate a default description when one isn't available
   generateDefaultDescription: (type: string, category: string, entities: ExtractedEntities): string => {
-    // Create a reasonable default description based on category and any available info
     const amount = entities.amount ? `${entities.amount} ${entities.currency}` : '';
     const keywords = entities.keywords.slice(0, 3).join(' ');
     
@@ -210,16 +178,13 @@ const enhancedNlpProcessor = {
     }
   },
   
-  // Extract emojis from text and identify potential categories
   extractEmojisFromText: (text: string): { emoji: string, category: string } | null => {
-    // Create a reverse mapping of emoji to category
     const emojiToCategory: Record<string, string> = {};
     
     Object.entries(categoryEmojis).forEach(([category, emoji]) => {
       emojiToCategory[emoji] = category;
     });
     
-    // Search for any emojis in the text
     for (const emoji of Object.values(categoryEmojis)) {
       if (text.includes(emoji)) {
         return {
@@ -229,7 +194,6 @@ const enhancedNlpProcessor = {
       }
     }
     
-    // Check for emoji-like symbols
     if (text.includes(':)') || text.includes(':-)')) {
       return { emoji: '🙂', category: 'Intrattenimento' };
     } else if (text.includes(':(') || text.includes(':-(')) {
@@ -241,50 +205,41 @@ const enhancedNlpProcessor = {
     return null;
   },
   
-  // Learn from successful transactions to improve future categorization
   learnFromTransaction: (text: string, transaction: Transaction): void => {
     if (!transaction.category || transaction.category === 'Altro') {
-      // No category learning needed for uncategorized transactions
       return;
     }
     
     try {
-      // Extract potential merchant names or key terms from the text
       const words = text.split(/\s+/);
       
-      // Filter out emojis for separate processing
       const emojis = words.filter(word => 
         /\p{Emoji}/u.test(word) && 
-        !word.match(/[\p{L}\p{N}]/u) // Only pure emoji characters
+        !word.match(/[\p{L}\p{N}]/u)
       );
       
       const potentialMerchants = words.filter(word => 
         word.length > 2 && 
-        !/^\d+$/.test(word) && // Exclude numbers
-        !/\p{Emoji}/u.test(word) && // Exclude emoji-only words
-        !['euro', 'eur', '€', 'per', 'con', 'dal', 'del', 'che', 'non', 'come', 'cosa', 'sono', 'alla', 'alle', 'nella', 'nelle'].includes(word.toLowerCase()) // Exclude common words
+        !/^\d+$/.test(word) && 
+        !/\p{Emoji}/u.test(word) && 
+        !['euro', 'eur', '€', 'per', 'con', 'dal', 'del', 'che', 'non', 'come', 'cosa', 'sono', 'alla', 'alle', 'nella', 'nelle'].includes(word.toLowerCase())
       );
       
-      // If we found emojis in the text, associate them with this category
       if (emojis.length > 0) {
         console.log(`Learning emoji-category association: "${emojis[0]}" -> ${transaction.category}`);
-        // This could be used to enhance the emoji-category mapping in the future
       }
       
       if (potentialMerchants.length > 0) {
-        // Sort by length and take the longest words as potential merchant names
         const merchantCandidates = potentialMerchants
           .sort((a, b) => b.length - a.length)
-          .slice(0, 3); // Take top 3 longest words
+          .slice(0, 3);
         
         for (const merchantCandidate of merchantCandidates) {
           console.log(`Learning category association: "${merchantCandidate}" -> ${transaction.category}`);
           
-          // Add this merchant-category association to our categorization rules
           const merchantPattern = createMerchantPattern(merchantCandidate);
           
-          // Determine icon type based on category
-          let iconType = 'smartphone'; // default
+          let iconType = 'smartphone';
           switch (transaction.category.toLowerCase()) {
             case ExpenseCategories.Food.toLowerCase():
               iconType = 'shopping-bag';
@@ -324,7 +279,6 @@ const enhancedNlpProcessor = {
               break;
           }
           
-          // Add the rule to our auto-categorization system
           addCustomRule(transaction.category, iconType, [merchantPattern]);
         }
       }
@@ -333,23 +287,19 @@ const enhancedNlpProcessor = {
     }
   },
   
-  // Analyze text and provide detailed NLP analysis
   analyzeText: (text: string): any => {
     try {
-      // Preprocess text to handle Italian abbreviations and snippet words
       const preprocessedText = enhancedNlpProcessor.preprocessText(text);
       
       const processedText = TextProcessor.processText(preprocessedText);
       const classification = Classifier.classify(processedText);
       const entities = EntityExtractor.extract(processedText, classification);
       
-      // Check for emoji indicators
       const emojiMatch = enhancedNlpProcessor.extractEmojisFromText(preprocessedText);
       if (emojiMatch) {
         console.log(`Analysis found emoji: ${emojiMatch.emoji} for category ${emojiMatch.category}`);
       }
       
-      // Return detailed analysis
       return {
         processed: processedText,
         classification: classification,
@@ -370,6 +320,44 @@ const enhancedNlpProcessor = {
         error: 'Failed to analyze text',
         details: error
       };
+    }
+  },
+  
+  processReceiptData: (data: { text: string, amount?: number, merchant?: string }): Transaction | null => {
+    try {
+      if (!data.text || data.text.trim() === '') {
+        console.warn('Empty text provided from receipt OCR');
+        return null;
+      }
+      
+      const transaction: Transaction = {
+        type: 'USCITA',
+        amount: data.amount || 0,
+        description: data.merchant || data.text.split('\n')[0] || 'Receipt scan',
+        date: new Date().toISOString().split('T')[0],
+        metadata: {
+          source: 'receipt_image',
+          rawText: data.text
+        }
+      };
+      
+      const processedText = TextProcessor.processText(transaction.description);
+      const classification = Classifier.classify(processedText);
+      
+      if (classification.subcategory) {
+        transaction.category = classification.subcategory;
+      }
+      
+      console.log('Receipt OCR processed transaction:', transaction);
+      
+      const processedTransaction = transactionStore.addTransaction(transaction);
+      
+      enhancedNlpProcessor.learnFromTransaction(data.text, transaction);
+      
+      return processedTransaction;
+    } catch (error) {
+      console.error('Error processing receipt data in NLP processor:', error);
+      return null;
     }
   }
 };

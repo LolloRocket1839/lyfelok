@@ -1,362 +1,220 @@
-
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { SendHorizontal, X, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import CashTalkDialog from './CashTalkDialog';
 import { useToast } from '@/components/ui/use-toast';
-import { useLifestyleLock } from '@/hooks/useLifestyleLock';
-import { useAuth } from '@/contexts/AuthContext';
 import enhancedNlpProcessor from '@/utils/enhancedNlpProcessor';
 import { transactionStore } from '@/utils/transactionStore';
-import { TransactionRouter, convertAnalysisToTransaction, Transaction, TransactionType } from '@/utils/transactionRouter';
+import { Transaction } from '@/utils/transactionRouter';
+import TransactionInterpretation from './TransactionInterpretation';
 import ElegantFeedbackUI from './ElegantFeedbackUI';
-import { mainCategories } from '@/utils/transactionStore';
-import ResponsiveCashTalk from './ResponsiveCashTalk';
+import ReceiptImageButton from './ReceiptImageButton';
+import receiptProcessor from '@/utils/receiptProcessor';
 
 interface ConversationalInterfaceProps {
   viewSetter: (view: 'dashboard' | 'finances' | 'projections') => void;
 }
 
-export default function ConversationalInterface({ viewSetter }: ConversationalInterfaceProps) {
-  const { user } = useAuth();
+const ConversationalInterface: React.FC<ConversationalInterfaceProps> = ({ viewSetter }) => {
+  const [chatExpanded, setChatExpanded] = useState(false);
+  const [userInput, setUserInput] = useState('');
+  const [interpretation, setInterpretation] = useState<Transaction | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  const [processing, setProcessing] = useState(false);
-  const transactionRouterRef = useRef<TransactionRouter | null>(null);
-  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
-  const [lastTransactionId, setLastTransactionId] = useState<number | null>(null);
-  
-  const [feedbackNeeded, setFeedbackNeeded] = useState(false);
-  const [currentTransaction, setCurrentTransaction] = useState<any>(null);
-  const [suggestedCategories, setSuggestedCategories] = useState<any[]>([]);
-  const [lastTransaction, setLastTransaction] = useState<any>(null);
-  
-  const {
-    handleExpenseSubmit,
-    handleAddDeposit,
-    handleIncomeIncrease,
-    setExpenseCategory,
-    setExpenseSpent,
-    setExpenseBaseline,
-    setExpenseDate,
-    setDepositAmount,
-    setDepositCategory,
-    setDepositDescription,
-    setDepositDate,
-    setNewIncomeValue,
-    setIncomeDate,
-    resetExpenseForm,
-    resetDepositForm,
-  } = useLifestyleLock();
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // Focus input when chat is expanded
   useEffect(() => {
-    if (user?.id) {
-      enhancedNlpProcessor.setUserId(user.id);
-      enhancedNlpProcessor.initialize();
-      
-      if (!transactionRouterRef.current) {
-        transactionRouterRef.current = new TransactionRouter(transactionStore);
-      }
+    if (chatExpanded && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
-  }, [user]);
+  }, [chatExpanded]);
 
-  useEffect(() => {
-    const handleTransaction = async (transaction: any) => {
-      console.log('Transaction notification received:', transaction);
-      
-      setTransactionHistory(prev => [transaction, ...prev].slice(0, 10));
-      setLastTransaction(transaction);
-      
-      // Store the transaction ID for later reference
-      if (transaction.id) {
-        setLastTransactionId(transaction.id);
-      } else {
-        // Fallback to using the index in history if no ID is present
-        setLastTransactionId(transactionHistory.length);
-      }
-      
-      if (user?.id && transaction.type === 'USCITA') {
-        const result = await transactionStore.processTransactionWithSmartCategories(
-          transaction,
-          user.id
-        );
-        
-        if (result.requireFeedback) {
-          setCurrentTransaction(result.transaction);
-          setSuggestedCategories(result.suggestedCategories.length > 0 
-            ? result.suggestedCategories 
-            : mainCategories);
-          setFeedbackNeeded(true);
-          return;
-        }
-      }
-      
-      updateUIBasedOnTransaction(transaction);
-    };
+  // Handle sending a message
+  const handleSendMessage = async () => {
+    if (userInput.trim() === '') return;
     
-    const unsubscribe = transactionStore.subscribe('ALL', handleTransaction);
-    
-    return () => unsubscribe();
-  }, [
-    handleAddDeposit, 
-    handleExpenseSubmit, 
-    handleIncomeIncrease, 
-    resetDepositForm, 
-    resetExpenseForm, 
-    setDepositAmount, 
-    setDepositCategory, 
-    setDepositDate, 
-    setDepositDescription, 
-    setExpenseBaseline, 
-    setExpenseCategory, 
-    setExpenseDate, 
-    setExpenseSpent, 
-    setIncomeDate, 
-    setNewIncomeValue,
-    transactionHistory.length,
-    user
-  ]);
-
-  const updateUIBasedOnTransaction = (transaction: any) => {
-    switch(transaction.type) {
-      case 'USCITA':
-        setExpenseCategory(transaction.category || 'Altro');
-        setExpenseSpent(transaction.amount.toString());
-        setExpenseBaseline((transaction.metadata?.baselineAmount || transaction.amount).toString());
-        setExpenseDate(transaction.date);
-        handleExpenseSubmit();
-        resetExpenseForm();
-        break;
-        
-      case 'INVESTIMENTO':
-        setDepositAmount(transaction.amount.toString());
-        setDepositCategory(transaction.category || '');
-        setDepositDescription(transaction.description || '');
-        setDepositDate(transaction.date);
-        handleAddDeposit();
-        resetDepositForm();
-        break;
-        
-      case 'AUMENTO_REDDITO':
-        setNewIncomeValue(transaction.amount.toString());
-        setIncomeDate(transaction.date);
-        handleIncomeIncrease();
-        break;
-        
-      case 'ENTRATA':
-        setNewIncomeValue(transaction.amount.toString());
-        setIncomeDate(transaction.date);
-        handleIncomeIncrease();
-        break;
-        
-      default:
-        console.log('Unhandled transaction type:', transaction.type);
-    }
-  };
-
-  const handleCategorySelection = async (categoryId: string) => {
-    if (!currentTransaction || !lastTransactionId || !user?.id) {
-      console.error('Missing required data for category update:', {
-        transaction: currentTransaction,
-        id: lastTransactionId,
-        userId: user?.id
-      });
-      showToast("Dati mancanti per l'aggiornamento della categoria", "destructive");
-      return;
-    }
+    setIsProcessing(true);
     
     try {
-      console.log('Processing category feedback with:', {
-        transactionId: lastTransactionId,
-        categoryId: categoryId,
-        userId: user.id
-      });
+      // Process the user input with NLP
+      const result = enhancedNlpProcessor.processText(userInput);
       
-      const result = await transactionStore.processFeedback(
-        lastTransactionId,
-        categoryId,
-        user.id
-      );
-      
-      console.log('Feedback processing result:', result);
-      
-      if (result.success && result.updatedTransaction) {
-        updateUIBasedOnTransaction(result.updatedTransaction);
-        showToast(`Categoria aggiornata a: ${categoryId}`);
+      if (result) {
+        console.log('NLP result:', result);
+        setInterpretation(result);
       } else {
-        console.error('Feedback processing failed:', result.error || 'Unknown error');
-        showToast("Non è stato possibile aggiornare la categoria", "destructive");
+        // If NLP couldn't interpret the message
+        toast({
+          title: "Non ho capito",
+          description: "Prova a essere più specifico sulla transazione.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error('Error processing category feedback:', error);
-      showToast("Errore nell'aggiornamento della categoria", "destructive");
+      console.error('Error processing message:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore nell'elaborazione del messaggio.",
+        variant: "destructive",
+      });
     } finally {
-      setFeedbackNeeded(false);
-      setCurrentTransaction(null);
-      setSuggestedCategories([]);
+      setIsProcessing(false);
     }
   };
 
-  const handleDismissFeedback = () => {
-    if (currentTransaction) {
-      updateUIBasedOnTransaction(currentTransaction);
+  // Handle key press events
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSendMessage();
     }
-    
-    setFeedbackNeeded(false);
-    setCurrentTransaction(null);
-    setSuggestedCategories([]);
   };
 
-  const handleAnalyze = async (inputText: string): Promise<void> => {
-    if (!inputText.trim() || !transactionRouterRef.current) {
-      return Promise.reject(new Error("Empty input or router not initialized"));
-    }
-    
-    setProcessing(true);
-    
-    const lowerText = inputText.toLowerCase();
-    
-    if (lowerText.includes('dashboard') || lowerText.includes('panoramica') || lowerText.includes('home')) {
-      viewSetter('dashboard');
-      showToast('Dashboard aperta');
-      setProcessing(false);
-      return Promise.resolve();
-    } else if (lowerText.includes('investiment') || lowerText.includes('deposit') || 
-               lowerText.includes('spes') || lowerText.includes('budget') || 
-               lowerText.includes('cost') || lowerText.includes('finanz') || 
-               lowerText.includes('gestione')) {
-      viewSetter('finances');
-      showToast('Gestione Finanziaria aperta');
-      setProcessing(false);
-      return Promise.resolve();
-    } else if (lowerText.includes('proiezion') || lowerText.includes('previs') || lowerText.includes('futur')) {
-      viewSetter('projections');
-      showToast('Sezione proiezioni aperta');
-      setProcessing(false);
-      return Promise.resolve();
-    }
-    
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        try {
-          const analysisResult = enhancedNlpProcessor.analyzeText(inputText);
-          console.log('NLP Analysis result:', analysisResult);
-          
-          const transaction = convertAnalysisToTransaction(analysisResult);
-          console.log('Converted transaction:', transaction);
-          
-          if (transactionRouterRef.current) {
-            const routedTransaction = transactionRouterRef.current.route(transaction);
-            console.log('Routed transaction:', routedTransaction);
-            
-            showTransactionToast(routedTransaction);
-          }
-          
-          setProcessing(false);
-          resolve();
-        } catch (error) {
-          console.error('Error analyzing text:', error);
-          setProcessing(false);
-          showToast("Non riuscito a interpretare il testo", "destructive");
-          reject(error);
-        }
-      }, 300);
-    });
-  };
-
-  const handleFormSubmit = async (formData: any): Promise<void> => {
-    console.log('Form data received:', formData);
-    
-    if (!user?.id || !formData.amount || !formData.category) {
-      return Promise.reject(new Error("Missing required fields or user not authenticated"));
-    }
-    
-    const transaction: Transaction = {
-      type: formData.type === 'expense' ? 'USCITA' : 
-            formData.type === 'investment' ? 'INVESTIMENTO' : 'ENTRATA' as TransactionType,
-      amount: parseFloat(formData.amount),
-      description: formData.description || formData.category,
-      category: formData.category,
-      date: formData.date || new Date().toISOString().split('T')[0],
-      metadata: {
-        baselineAmount: parseFloat(formData.amount),
-        rawInput: `${formData.amount} ${formData.description} (${formData.category})`,
-        processingTime: new Date()
+  // Confirm and save the transaction
+  const confirmTransaction = (transaction: Transaction) => {
+    try {
+      // Add the transaction to the store
+      const result = transactionStore.addTransaction(transaction);
+      
+      // Show success message
+      toast({
+        title: "Transazione salvata",
+        description: `${transaction.type === 'ENTRATA' ? 'Entrata' : 'Spesa'} di €${transaction.amount.toFixed(2)} registrata.`,
+      });
+      
+      // Reset the interface
+      setInterpretation(null);
+      setUserInput('');
+      
+      // Navigate to finances view if it's a significant transaction
+      if (transaction.amount > 100) {
+        viewSetter('finances');
       }
-    };
-    
-    console.log('Constructed transaction from form:', transaction);
-    
-    return new Promise((resolve, reject) => {
-      try {
-        if (transactionRouterRef.current) {
-          const routedTransaction = transactionRouterRef.current.route(transaction);
-          console.log('Routed transaction from form:', routedTransaction);
-          
-          showTransactionToast(routedTransaction);
-          resolve();
-        } else {
-          reject(new Error("Transaction router not initialized"));
-        }
-      } catch (error) {
-        console.error('Error processing form submission:', error);
-        reject(error);
-      }
-    });
+    } catch (error) {
+      console.error('Error saving transaction:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore nel salvare la transazione.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleClose = () => {
-    // Close the cash talk interface
-    setFeedbackNeeded(false);
-    setCurrentTransaction(null);
-    setSuggestedCategories([]);
-  };
-
-  const showToast = (message: string, variant: 'default' | 'destructive' = 'default') => {
-    toast({
-      title: variant === 'destructive' ? "Errore" : "Cash Talk",
-      description: message,
-      variant: variant,
-      duration: 3000,
-    });
-  };
-
-  const showTransactionToast = (transaction: any) => {
-    const { type, amount, category } = transaction;
+  // Handle receipt image processing
+  const handleReceiptProcessed = (receiptText: string) => {
+    // Process the receipt text using our receipt processor
+    const transaction = receiptProcessor.processReceiptText(receiptText);
     
-    switch(type) {
-      case 'USCITA':
-        showToast(`Spesa: ${amount}€ (${category || 'Altro'})`);
-        break;
-      case 'INVESTIMENTO':
-        showToast(`Investimento: ${amount}€ (${category || 'Generico'})`);
-        break;
-      case 'AUMENTO_REDDITO':
-        showToast(`Reddito aggiornato a ${amount}€`);
-        break;
-      case 'ENTRATA':
-        showToast(`Entrata: ${amount}€ (${category || 'Generico'})`);
-        break;
-      default:
-        showToast(`Transazione registrata: ${amount}€`);
+    if (transaction) {
+      // Display the processed transaction
+      setInterpretation(transaction);
+      setChatExpanded(true);
+    } else {
+      toast({
+        title: "Processing failed",
+        description: "Unable to extract transaction data from the receipt. Please try again or enter manually.",
+        variant: "destructive",
+      });
     }
   };
 
   return (
-    <>
-      <ResponsiveCashTalk 
-        onSubmit={handleAnalyze}
-        onFormSubmit={handleFormSubmit}
-        isProcessing={processing}
-        categories={mainCategories}
-        lastTransaction={lastTransaction}
-        onClose={handleClose}
-      />
-      
-      {feedbackNeeded && currentTransaction && (
-        <ElegantFeedbackUI
-          transaction={currentTransaction}
-          suggestedCategories={suggestedCategories}
-          onSelectCategory={handleCategorySelection}
-          onDismiss={handleDismissFeedback}
-        />
-      )}
-    </>
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center">
+      <div className={`${chatExpanded ? 'bg-white shadow-lg rounded-t-xl p-4 w-full max-w-3xl mx-auto' : 'bg-transparent'}`}>
+        {/* Chat Dialog */}
+        {chatExpanded && interpretation && (
+          <div className="mb-4">
+            <TransactionInterpretation transaction={interpretation} />
+            
+            {/* Feedback UI */}
+            <ElegantFeedbackUI 
+              transaction={interpretation}
+              onConfirm={() => confirmTransaction(interpretation)}
+              onCancel={() => {
+                setInterpretation(null);
+                setUserInput('');
+              }}
+              onCategoryChange={(newCategory: string) => {
+                if (interpretation) {
+                  setInterpretation({
+                    ...interpretation,
+                    category: newCategory
+                  });
+                }
+              }}
+            />
+          </div>
+        )}
+        
+        {/* Chat Input Area */}
+        <div className={`flex items-center ${chatExpanded ? 'space-x-2' : 'justify-center'}`}>
+          {chatExpanded && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                onClick={() => setChatExpanded(false)}
+              >
+                <X size={18} />
+              </Button>
+              
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Descrivi la tua transazione..."
+                  className="w-full py-2 px-4 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 rounded-full"
+                  onClick={handleSendMessage}
+                  disabled={userInput.trim() === ''}
+                >
+                  <SendHorizontal size={18} />
+                </Button>
+              </div>
+              
+              {/* Receipt Image Upload Button */}
+              <ReceiptImageButton onProcessComplete={handleReceiptProcessed} />
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                onClick={() => {
+                  toast({
+                    title: "Suggerimenti",
+                    description: "Prova a scrivere: 'spesa 45 euro al supermercato', 'stipendio 1500 euro', 'investito 500 euro in ETF'",
+                  });
+                }}
+              >
+                <HelpCircle size={18} />
+              </Button>
+            </>
+          )}
+          
+          {!chatExpanded && (
+            <Button
+              variant="outline"
+              onClick={() => setChatExpanded(true)}
+              className="bg-white shadow-md rounded-full px-6 py-2 flex items-center gap-2"
+            >
+              <span>Cash Talk</span>
+              <ChevronUp size={18} />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
   );
-}
+};
+
+export default ConversationalInterface;
