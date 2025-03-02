@@ -1,4 +1,3 @@
-
 import { Transaction, TransactionType } from './transactionRouter';
 
 interface Entity {

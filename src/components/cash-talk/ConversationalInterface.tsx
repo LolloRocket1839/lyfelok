@@ -280,7 +280,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     }
     
     // Construct a transaction from form data
-    const transaction = {
+    const transaction: Transaction = {
       type: formData.type === 'expense' ? 'USCITA' : 
             formData.type === 'investment' ? 'INVESTIMENTO' : 'ENTRATA',
       amount: parseFloat(formData.amount),
