@@ -1,4 +1,3 @@
-
 import { Transaction, TransactionType } from './transactionRouter';
 
 interface Entity {
@@ -97,7 +96,7 @@ export class EnhancedNlpProcessor {
           'invstito': 'investito', 'investio': 'investito', 'ivestito': 'investito',
           'investimeno': 'investimento', 'invstimento': 'investimento', 'investmento': 'investimento',
           'depstato': 'depositato', 'depositao': 'depositato', 'depostato': 'depositato',
-          'risparmato': 'risparmiato', 'risparmito': 'risparmiato', 'rispariato': 'risparmiato',
+          'risparmato': 'risparmiato', 'risparmito': 'risparmito', 'rispariato': 'rispariato',
           'mess': 'messo', 'meso': 'messo', 'mezzo': 'messo'
         },
         instruments: {
