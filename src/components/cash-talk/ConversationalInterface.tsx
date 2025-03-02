@@ -16,7 +16,8 @@ interface ConversationalInterfaceProps {
 }
 
 const ConversationalInterface: React.FC<ConversationalInterfaceProps> = ({ viewSetter }) => {
-  const [chatExpanded, setChatExpanded] = useState(false);
+  // Changed this from false to true to make Cash Talk always open
+  const [chatExpanded, setChatExpanded] = useState(true);
   const [userInput, setUserInput] = useState('');
   const [interpretation, setInterpretation] = useState<Transaction | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -169,6 +170,7 @@ const ConversationalInterface: React.FC<ConversationalInterfaceProps> = ({ viewS
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  ref={inputRef}
                 />
                 
                 <Button
