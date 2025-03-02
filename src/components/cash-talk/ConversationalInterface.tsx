@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
@@ -85,11 +84,9 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         }
       }
       
-      // Automatically collapse Cash Talk after transaction completion
       updateUIBasedOnTransaction(transaction);
       setTransactionCompleted(true);
       
-      // After a short delay, minimize the interface to give visual feedback first
       setTimeout(() => {
         setIsExpanded(false);
       }, 1500);
@@ -178,7 +175,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       setFeedbackNeeded(false);
       setCurrentTransaction(null);
       setSuggestedCategories([]);
-      // Collapse after feedback
       setTimeout(() => {
         setIsExpanded(false);
       }, 1000);
@@ -194,7 +190,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     setCurrentTransaction(null);
     setSuggestedCategories([]);
     
-    // Collapse after feedback dismissed
     setTimeout(() => {
       setIsExpanded(false);
     }, 500);
@@ -346,7 +341,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="relative"
+            className="sticky bottom-0 right-0 z-50 w-full md:w-auto md:absolute md:bottom-8 md:right-8"
           >
             <ResponsiveCashTalk 
               onSubmit={handleAnalyze}
@@ -357,7 +352,6 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
               transactionCompleted={transactionCompleted}
             />
             
-            {/* Collapse button */}
             <motion.button
               className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors z-20"
               onClick={toggleExpanded}
