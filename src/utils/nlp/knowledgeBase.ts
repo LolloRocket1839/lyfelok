@@ -1,3 +1,4 @@
+
 export interface VariationMap {
   [key: string]: string;
 }
@@ -167,5 +168,12 @@ export class NlpKnowledgeBase {
    */
   getLocalDictionary(): any {
     return this.localDictionary;
+  }
+  
+  /**
+   * Get a specific category from the knowledge base
+   */
+  getCategory(categoryType: keyof KnowledgeBaseData): KnowledgeCategory {
+    return this.knowledgeBase[categoryType];
   }
 }

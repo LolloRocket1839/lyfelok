@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowUp, MessageSquare, X, HelpCircle, Loader2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,7 +28,11 @@ interface ResponsiveCashTalkProps {
     date: string;
   } | null;
   onFormSubmit?: (formData: TransactionFormData) => Promise<void>;
-  transactionCompleted?: boolean; // New prop to show success state
+  transactionCompleted?: boolean;
+  messages?: any[];
+  inputValue?: string;
+  setInputValue?: React.Dispatch<React.SetStateAction<string>>;
+  isLoading?: boolean;
 }
 
 const ResponsiveCashTalk = ({
@@ -38,19 +41,20 @@ const ResponsiveCashTalk = ({
   categories = mainCategories,
   lastTransaction = null,
   onFormSubmit,
-  transactionCompleted = false
+  transactionCompleted = false,
+  messages,
+  inputValue,
+  setInputValue,
+  isLoading
 }: ResponsiveCashTalkProps) => {
   const { toast } = useToast();
-  const [inputValue, setInputValue] = useState('');
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
   const [processing, setProcessing] = useState(isProcessing);
   const inputRef = useRef<HTMLInputElement>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [showFormMode, setShowFormMode] = useState(false);
-  // Show success animation briefly
   const [showSuccess, setShowSuccess] = useState(false);
   
-  // Form state
   const [formData, setFormData] = useState<TransactionFormData>({
     type: 'expense',
     amount: '',
@@ -59,7 +63,6 @@ const ResponsiveCashTalk = ({
     date: new Date().toISOString().split('T')[0]
   });
   
-  // Placeholders that rotate
   const placeholders = [
     "Registra transazione...",
     "es: 30 pizza",
@@ -68,13 +71,11 @@ const ResponsiveCashTalk = ({
     "es: investito 200€ in ETF",
   ];
   
-  // Handle transaction completion feedback
   useEffect(() => {
     if (transactionCompleted) {
       setShowSuccess(true);
       setInputValue('');
       
-      // Reset success state after animation completes
       const timer = setTimeout(() => {
         setShowSuccess(false);
       }, 1500);
@@ -83,7 +84,6 @@ const ResponsiveCashTalk = ({
     }
   }, [transactionCompleted]);
   
-  // Rotate placeholders
   useEffect(() => {
     const interval = setInterval(() => {
       setPlaceholderIndex(prev => (prev + 1) % placeholders.length);
@@ -92,7 +92,6 @@ const ResponsiveCashTalk = ({
     return () => clearInterval(interval);
   }, [placeholders.length]);
 
-  // Listen for window resize
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -101,12 +100,10 @@ const ResponsiveCashTalk = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Update processing state from props
   useEffect(() => {
     setProcessing(isProcessing);
   }, [isProcessing]);
 
-  // Handle text submission
   const handleTextSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputValue.trim() || processing) return;
@@ -129,7 +126,6 @@ const ResponsiveCashTalk = ({
       });
   };
 
-  // Handle form submission
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -147,7 +143,6 @@ const ResponsiveCashTalk = ({
     if (onFormSubmit) {
       onFormSubmit(formData)
         .then(() => {
-          // Reset form after submission
           setFormData({
             type: 'expense',
             amount: '',
@@ -170,29 +165,24 @@ const ResponsiveCashTalk = ({
     }
   };
 
-  // Handle category shortcut click
   const handleCategoryShortcut = (category: string) => {
     if (showFormMode) {
-      // In form mode, set the category in the form
       setFormData(prev => ({
         ...prev,
         category
       }));
     } else {
-      // In text mode, append to the input
       setInputValue(prevValue => {
         const baseValue = prevValue.trim();
         return baseValue ? `${baseValue} (${category})` : `${category}`;
       });
       
-      // Focus the input after insertion
       if (inputRef.current) {
         inputRef.current.focus();
       }
     }
   };
 
-  // Handle input keydown (Enter to submit)
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -200,12 +190,9 @@ const ResponsiveCashTalk = ({
     }
   };
 
-  // Toggle between form and text input modes
   const toggleFormMode = () => {
     setShowFormMode(prev => !prev);
-    // Initialize form with any text already in the input
     if (!showFormMode && inputValue) {
-      // Basic parsing of input value (could be enhanced)
       const matches = inputValue.match(/(\d+).*?([a-zA-Z]+)/);
       if (matches) {
         setFormData(prev => ({
@@ -217,7 +204,6 @@ const ResponsiveCashTalk = ({
     }
   };
 
-  // Update form field
   const updateFormField = (field: keyof TransactionFormData, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -417,7 +403,6 @@ const ResponsiveCashTalk = ({
           )}
         </AnimatePresence>
         
-        {/* Category shortcuts */}
         <div className="flex overflow-x-auto scrollbar-hide gap-2 py-2 px-3 border-t border-gray-100">
           {categories.slice(0, windowWidth < 640 ? 3 : 5).map(category => (
             <button
@@ -438,7 +423,6 @@ const ResponsiveCashTalk = ({
           ))}
         </div>
         
-        {/* Last transaction (desktop only) */}
         {windowWidth >= 992 && lastTransaction && (
           <div className="hidden lg:flex items-center justify-between py-1.5 px-3 bg-gray-50 text-xs border-t border-gray-100">
             <div className="flex items-center gap-1">

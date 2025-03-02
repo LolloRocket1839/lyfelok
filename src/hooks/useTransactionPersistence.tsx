@@ -161,7 +161,7 @@ export const useTransactionPersistence = () => {
                      transaction.type === 'USCITA' ? 'spesa' : 
                      transaction.type === 'INVESTIMENTO' ? 'investimento' : 
                      'transazione'} è stata registrata con successo.`,
-        variant: "success",
+        variant: "default",
       });
       
       return savedTransaction;
@@ -177,7 +177,7 @@ export const useTransactionPersistence = () => {
                 toast({
                   title: "Transazione recuperata",
                   description: "Il salvataggio è stato completato dopo un tentativo di recupero.",
-                  variant: "success",
+                  variant: "default",
                 });
               }
             });
@@ -241,7 +241,7 @@ export const useTransactionPersistence = () => {
       toast({
         title: "Sincronizzazione completata",
         description: `${successfulSyncs.length} transazioni sincronizzate con successo${failedSyncs.length > 0 ? `, ${failedSyncs.length} in attesa` : ''}.`,
-        variant: "success",
+        variant: "default",
       });
     }
     

@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
@@ -290,7 +291,7 @@ const ConversationalInterface = ({ viewSetter }: ConversationalInterfaceProps) =
   
   // UI Component
   return (
-    <div className="relative">
+    <div className="fixed bottom-0 left-0 right-0 w-full z-50">
       <AnimatePresence>
         {isExpanded ? (
           <motion.div
@@ -298,7 +299,7 @@ const ConversationalInterface = ({ viewSetter }: ConversationalInterfaceProps) =
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="sticky bottom-0 right-0 z-50 w-full md:w-auto md:absolute md:bottom-8 md:right-8"
+            className="w-full md:w-auto md:absolute md:bottom-8 md:right-8"
           >
             <ResponsiveCashTalk 
               onSubmit={handleAnalyze}
@@ -325,11 +326,11 @@ const ConversationalInterface = ({ viewSetter }: ConversationalInterfaceProps) =
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="sticky bottom-8 right-8 z-50 md:absolute"
+            className="absolute bottom-8 right-8 z-50"
           >
             <button
               onClick={toggleExpanded}
-              className="flex items-center gap-2 bg-white text-blue-600 p-3 rounded-full shadow-lg hover:bg-blue-50 transition-colors"
+              className="flex items-center gap-2 bg-white shadow-lg p-3 rounded-full hover:bg-blue-50 transition-colors text-blue-600"
               aria-label="Apri Cash Talk"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -359,6 +360,9 @@ const ConversationalInterface = ({ viewSetter }: ConversationalInterfaceProps) =
           Modalità offline - Le transazioni verranno sincronizzate quando tornerai online
         </div>
       )}
+      
+      {/* Add invisible div for the message end reference */}
+      <div ref={messageEndRef}></div>
     </div>
   );
 };
