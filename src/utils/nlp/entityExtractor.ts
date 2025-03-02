@@ -1,5 +1,6 @@
 
 import { Entity, ExtractedEntities, ProcessedText, ClassificationResult } from './types';
+import { autoCategorize } from '../autoCategorization';
 
 export class EntityExtractor {
   static extract(processedText: ProcessedText, classification: ClassificationResult): ExtractedEntities {
@@ -34,6 +35,33 @@ export class EntityExtractor {
     // Use remaining words as description
     entities.description = processedText.cleanText;
     
+    // Try to categorize based on description using autoCategorization
+    if (entities.description) {
+      const categorization = autoCategorize(entities.description);
+      if (categorization && categorization.category) {
+        // Add category to classification if not already set
+        if (!classification.subcategory) {
+          classification.subcategory = categorization.category;
+        }
+      }
+    }
+    
     return entities;
+  }
+  
+  // New method to enrich transaction data after processing
+  static enrichTransactionData(transaction: any, text: string): any {
+    if (!transaction) return null;
+    
+    // Try to extract more detailed category info
+    const categorization = autoCategorize(text);
+    if (categorization && categorization.category) {
+      // Only update if no category was previously assigned
+      if (!transaction.category || transaction.category === 'Altro') {
+        transaction.category = categorization.category;
+      }
+    }
+    
+    return transaction;
   }
 }
