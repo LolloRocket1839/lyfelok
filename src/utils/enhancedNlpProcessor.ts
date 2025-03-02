@@ -86,7 +86,7 @@ export class EnhancedNlpProcessor {
           "educazione": ["education", "learning", "educazione", "formazione", "corso", "università", "libri", "studio"],
           "abbigliamento": ["clothing", "abbigliamento", "vestiti", "scarpe", "accessori", "moda"],
           "tecnologia": ["technology", "tech", "tecnologia", "elettronica", "dispositivi", "computer", "smartphone", "gadget"],
-          "altro": ["other", "altro", "varie", "extra", "misc"]
+          "varie": ["other", "altro", "varie", "extra", "misc"]
         }
       },
       
