@@ -1,3 +1,4 @@
+
 import { Transaction } from './transactionRouter';
 import { transactionStore } from './transactionStore';
 import { knowledgeBase } from './nlp/knowledgeBase';
@@ -7,6 +8,7 @@ import { TransactionProcessor } from './nlp/transactionProcessor';
 import { TextProcessor } from './nlp/textProcessor';
 import { ProcessedText, ClassificationResult, ExtractedEntities } from './nlp/types';
 import { autoCategorize, addCustomRule, createMerchantPattern } from './categorization';
+import { ExpenseCategories } from './categorization/types';
 
 const enhancedNlpProcessor = {
   userId: null as string | null,
@@ -71,47 +73,65 @@ const enhancedNlpProcessor = {
       const potentialMerchants = words.filter(word => 
         word.length > 3 && 
         !/^\d+$/.test(word) && // Exclude numbers
-        !['euro', 'eur', '€', 'per', 'con', 'dal', 'del'].includes(word.toLowerCase()) // Exclude common words
+        !['euro', 'eur', '€', 'per', 'con', 'dal', 'del', 'che', 'non', 'come', 'cosa', 'sono', 'alla', 'alle', 'nella', 'nelle'].includes(word.toLowerCase()) // Exclude common words
       );
       
       if (potentialMerchants.length > 0) {
-        // Take the longest word as a potential merchant name (simple heuristic)
-        const merchantCandidate = potentialMerchants.sort((a, b) => b.length - a.length)[0];
+        // Sort by length and take the longest words as potential merchant names
+        const merchantCandidates = potentialMerchants
+          .sort((a, b) => b.length - a.length)
+          .slice(0, 3); // Take top 3 longest words
         
-        console.log(`Learning category association: "${merchantCandidate}" -> ${transaction.category}`);
-        
-        // Add this merchant-category association to our categorization rules
-        const merchantPattern = createMerchantPattern(merchantCandidate);
-        
-        // Determine icon type based on category
-        let iconType = 'smartphone'; // default
-        switch (transaction.category.toLowerCase()) {
-          case 'cibo':
-          case 'food':
-            iconType = 'shopping-bag';
-            break;
-          case 'alloggio':
-          case 'casa':
-            iconType = 'home';
-            break;
-          case 'trasporto':
-          case 'trasporti':
-            iconType = 'car';
-            break;
-          case 'intrattenimento':
-          case 'svago':
-            iconType = 'coffee';
-            break;
-          case 'shopping':
-            iconType = 'shopping-bag';
-            break;
-          case 'utenze':
-            iconType = 'smartphone';
-            break;
+        for (const merchantCandidate of merchantCandidates) {
+          console.log(`Learning category association: "${merchantCandidate}" -> ${transaction.category}`);
+          
+          // Add this merchant-category association to our categorization rules
+          const merchantPattern = createMerchantPattern(merchantCandidate);
+          
+          // Determine icon type based on category
+          let iconType = 'smartphone'; // default
+          switch (transaction.category.toLowerCase()) {
+            case ExpenseCategories.Food.toLowerCase():
+              iconType = 'shopping-bag';
+              break;
+            case ExpenseCategories.Housing.toLowerCase():
+              iconType = 'home';
+              break;
+            case ExpenseCategories.Transport.toLowerCase():
+              iconType = 'car';
+              break;
+            case ExpenseCategories.Entertainment.toLowerCase():
+              iconType = 'coffee';
+              break;
+            case ExpenseCategories.Shopping.toLowerCase():
+              iconType = 'shopping-bag';
+              break;
+            case ExpenseCategories.Utilities.toLowerCase():
+              iconType = 'smartphone';
+              break;
+            case ExpenseCategories.Health.toLowerCase():
+              iconType = 'heart';
+              break;
+            case ExpenseCategories.Education.toLowerCase():
+              iconType = 'book';
+              break;
+            case ExpenseCategories.Travel.toLowerCase():
+              iconType = 'plane';
+              break;
+            case ExpenseCategories.PersonalCare.toLowerCase():
+              iconType = 'heart';
+              break;
+            case ExpenseCategories.Subscriptions.toLowerCase():
+              iconType = 'tv';
+              break;
+            default:
+              iconType = 'smartphone';
+              break;
+          }
+          
+          // Add the rule to our auto-categorization system
+          addCustomRule(transaction.category, iconType, [merchantPattern]);
         }
-        
-        // Add the rule to our auto-categorization system
-        addCustomRule(transaction.category, iconType, [merchantPattern]);
       }
     } catch (error) {
       console.error('Error learning from transaction:', error);

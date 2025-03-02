@@ -1,15 +1,22 @@
+
 import { Transaction } from './transactionRouter';
 import { supabase, userCategoryMappings, globalCategoryMappings } from '@/lib/supabase';
+import { ExpenseCategories } from './categorization/types';
 
 // Main category definitions
 export const mainCategories = [
-  { id: 'Cibo', label: 'Cibo', icon: '🍽️', color: '#4CAF50' },
-  { id: 'Alloggio', label: 'Casa', icon: '🏠', color: '#2196F3' },
-  { id: 'Trasporto', label: 'Trasporti', icon: '🚗', color: '#FF9800' },
-  { id: 'Intrattenimento', label: 'Svago', icon: '🎬', color: '#9C27B0' },
-  { id: 'Utenze', label: 'Utenze', icon: '💡', color: '#F44336' },
-  { id: 'Shopping', label: 'Shopping', icon: '👕', color: '#3F51B5' },
-  { id: 'Altro', label: 'Altro', icon: '📦', color: '#607D8B' }
+  { id: ExpenseCategories.Food, label: 'Cibo', icon: '🍽️', color: '#4CAF50' },
+  { id: ExpenseCategories.Housing, label: 'Casa', icon: '🏠', color: '#2196F3' },
+  { id: ExpenseCategories.Transport, label: 'Trasporti', icon: '🚗', color: '#FF9800' },
+  { id: ExpenseCategories.Entertainment, label: 'Svago', icon: '🎬', color: '#9C27B0' },
+  { id: ExpenseCategories.Utilities, label: 'Utenze', icon: '💡', color: '#F44336' },
+  { id: ExpenseCategories.Shopping, label: 'Shopping', icon: '👕', color: '#3F51B5' },
+  { id: ExpenseCategories.Health, label: 'Salute', icon: '💊', color: '#E91E63' },
+  { id: ExpenseCategories.Education, label: 'Istruzione', icon: '📚', color: '#009688' },
+  { id: ExpenseCategories.Travel, label: 'Viaggi', icon: '✈️', color: '#00BCD4' },
+  { id: ExpenseCategories.PersonalCare, label: 'Cura Personale', icon: '💇', color: '#8BC34A' },
+  { id: ExpenseCategories.Subscriptions, label: 'Abbonamenti', icon: '📱', color: '#CDDC39' },
+  { id: ExpenseCategories.Other, label: 'Altro', icon: '📦', color: '#607D8B' }
 ];
 
 // Observer pattern for real-time UI updates
