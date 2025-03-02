@@ -1,9 +1,10 @@
 
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, Image as ImageIcon } from 'lucide-react';
+import { Camera, Upload, X, Check, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import enhancedNlpProcessor from '@/utils/enhancedNlpProcessor';
+import receiptProcessor from '@/utils/receiptProcessor';
 
 interface ReceiptImageButtonProps {
   onProcessComplete: (text: string) => void;
@@ -13,6 +14,7 @@ const ReceiptImageButton: React.FC<ReceiptImageButtonProps> = ({ onProcessComple
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = useState(false);
+  const [processingStage, setProcessingStage] = useState<'idle' | 'loading' | 'analyzing' | 'success' | 'error'>('idle');
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
@@ -33,20 +35,26 @@ const ReceiptImageButton: React.FC<ReceiptImageButtonProps> = ({ onProcessComple
     }
 
     setProcessing(true);
+    setProcessingStage('loading');
+    
     toast({
       title: "Processing receipt...",
       description: "Analyzing the image for transaction data.",
     });
 
     try {
-      // Read the image file
+      // First processing stage - loading the image
       const imageData = await readFileAsDataURL(file);
       
-      // Process the receipt image (this would connect to a real OCR service)
+      // Update processing stage
+      setProcessingStage('analyzing');
+      
+      // Second processing stage - OCR analysis
       const extractedData = await processReceiptImage(imageData);
       
       if (extractedData && extractedData.text) {
         // Successfully extracted text from the receipt
+        setProcessingStage('success');
         toast({
           title: "Receipt processed!",
           description: "Successfully extracted transaction data.",
@@ -55,6 +63,7 @@ const ReceiptImageButton: React.FC<ReceiptImageButtonProps> = ({ onProcessComple
         // Send the extracted text to the NLP processor
         onProcessComplete(extractedData.text);
       } else {
+        setProcessingStage('error');
         toast({
           title: "Processing failed",
           description: "Couldn't extract meaningful data from the image.",
@@ -63,13 +72,18 @@ const ReceiptImageButton: React.FC<ReceiptImageButtonProps> = ({ onProcessComple
       }
     } catch (error) {
       console.error("Error processing receipt image:", error);
+      setProcessingStage('error');
       toast({
         title: "Processing error",
         description: "An error occurred while processing the image.",
         variant: "destructive",
       });
     } finally {
-      setProcessing(false);
+      setTimeout(() => {
+        setProcessing(false);
+        setProcessingStage('idle');
+      }, 1000); // Keep the success/error state visible briefly
+      
       // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -108,22 +122,45 @@ const ReceiptImageButton: React.FC<ReceiptImageButtonProps> = ({ onProcessComple
     });
   };
 
+  // Get the appropriate icon based on the processing stage
+  const getButtonIcon = () => {
+    switch (processingStage) {
+      case 'loading':
+        return <Upload size={18} className="animate-spin" />;
+      case 'analyzing':
+        return <ImageIcon size={18} className="animate-pulse" />;
+      case 'success':
+        return <Check size={18} className="text-green-500" />;
+      case 'error':
+        return <X size={18} className="text-red-500" />;
+      default:
+        return <Camera size={18} />;
+    }
+  };
+
+  // Get button color based on processing stage
+  const getButtonVariant = () => {
+    switch (processingStage) {
+      case 'success':
+        return "outline";
+      case 'error':
+        return "destructive";
+      default:
+        return "ghost";
+    }
+  };
+
   return (
     <>
       <Button 
-        variant="ghost" 
+        variant={getButtonVariant()} 
         size="icon" 
         className="rounded-full bg-white hover:bg-gray-100 text-gray-700"
         onClick={handleButtonClick}
         disabled={processing}
+        title="Upload receipt image"
       >
-        {processing ? (
-          <div className="animate-spin">
-            <Upload size={18} />
-          </div>
-        ) : (
-          <Camera size={18} />
-        )}
+        {getButtonIcon()}
       </Button>
       
       <input
