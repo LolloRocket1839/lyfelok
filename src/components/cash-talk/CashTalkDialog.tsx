@@ -5,9 +5,11 @@ import { Transaction } from '@/utils/transactionRouter';
 
 interface CashTalkDialogProps {
   transaction: Transaction | null;
+  isOpen?: boolean;
+  setIsOpen?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const CashTalkDialog: React.FC<CashTalkDialogProps> = ({ transaction }) => {
+const CashTalkDialog: React.FC<CashTalkDialogProps> = ({ transaction, isOpen, setIsOpen }) => {
   if (!transaction) return null;
   
   const isReceiptTransaction = transaction.metadata?.source === 'receipt_image';

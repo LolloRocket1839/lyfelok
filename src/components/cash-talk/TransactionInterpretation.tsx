@@ -1,26 +1,15 @@
 
 import { motion } from 'framer-motion';
 import { Check, ShoppingBag, ArrowDown, TrendingUp, Calendar, Tag } from 'lucide-react';
+import { Transaction } from '@/utils/transactionRouter';
 
 interface TransactionInterpretationProps {
-  analysis: {
-    type: string;
-    amount: number;
-    category: string;
-    date: string;
-    baselineAmount: number;
-    confidence: 'high' | 'medium' | 'low';
-  };
-  onConfirm: () => void;
-  onEdit: () => void;
+  transaction: Transaction;
 }
 
-export default function TransactionInterpretation({ 
-  analysis, 
-  onConfirm, 
-  onEdit 
-}: TransactionInterpretationProps) {
-  const { type, amount, category, date, confidence } = analysis;
+export default function TransactionInterpretation({ transaction }: TransactionInterpretationProps) {
+  // Determine transaction type for display
+  const type = transaction.type === 'ENTRATA' ? 'entrata' : 'spesa';
   
   // Icone per i tipi di transazione
   const getTypeIcon = () => {
@@ -35,34 +24,6 @@ export default function TransactionInterpretation({
         return <Tag size={24} />;
     }
   };
-  
-  // Colore del badge di confidenza
-  const getConfidenceColor = () => {
-    switch(confidence) {
-      case 'high':
-        return 'bg-emerald-100 text-emerald-800';
-      case 'medium':
-        return 'bg-amber-100 text-amber-800';
-      case 'low':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-slate-100 text-slate-800';
-    }
-  };
-  
-  // Testo della confidenza
-  const getConfidenceText = () => {
-    switch(confidence) {
-      case 'high':
-        return 'Alta affidabilità';
-      case 'medium':
-        return 'Media affidabilità';
-      case 'low':
-        return 'Bassa affidabilità';
-      default:
-        return 'Affidabilità non determinata';
-    }
-  };
 
   return (
     <motion.div
@@ -73,8 +34,8 @@ export default function TransactionInterpretation({
     >
       <div className="p-4 border-b border-slate-100 flex justify-between items-center">
         <h3 className="font-medium text-slate-900">Interpretazione</h3>
-        <span className={`text-xs px-2 py-1 rounded-full ${getConfidenceColor()}`}>
-          {getConfidenceText()}
+        <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-800">
+          {transaction.metadata?.confidence || 'Alta affidabilità'}
         </span>
       </div>
       
@@ -95,7 +56,7 @@ export default function TransactionInterpretation({
           </div>
           <div>
             <p className="text-sm text-slate-500">Importo</p>
-            <p className="font-medium text-slate-900">€{amount.toFixed(2)}</p>
+            <p className="font-medium text-slate-900">€{transaction.amount.toFixed(2)}</p>
           </div>
         </div>
         
@@ -105,7 +66,7 @@ export default function TransactionInterpretation({
           </div>
           <div>
             <p className="text-sm text-slate-500">Categoria</p>
-            <p className="font-medium text-slate-900">{category}</p>
+            <p className="font-medium text-slate-900">{transaction.category || 'Non categorizzata'}</p>
           </div>
         </div>
         
@@ -115,24 +76,9 @@ export default function TransactionInterpretation({
           </div>
           <div>
             <p className="text-sm text-slate-500">Data</p>
-            <p className="font-medium text-slate-900">{new Date(date).toLocaleDateString('it-IT')}</p>
+            <p className="font-medium text-slate-900">{new Date(transaction.date).toLocaleDateString('it-IT')}</p>
           </div>
         </div>
-      </div>
-      
-      <div className="p-4 bg-slate-50 flex gap-3">
-        <button
-          onClick={onConfirm}
-          className="flex-1 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-        >
-          <Check size={18} /> Conferma
-        </button>
-        <button
-          onClick={onEdit}
-          className="py-2.5 px-4 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-medium transition-colors"
-        >
-          Modifica
-        </button>
       </div>
     </motion.div>
   );

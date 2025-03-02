@@ -9,16 +9,17 @@ import { toast } from 'sonner';
 
 interface ElegantFeedbackUIProps {
   transaction: Transaction;
-  suggestedCategories: typeof mainCategories;
-  onSelectCategory: (categoryId: string) => void;
-  onDismiss: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+  onCategoryChange: (newCategory: string) => void;
 }
 
-const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory, onDismiss }: ElegantFeedbackUIProps) => {
+const ElegantFeedbackUI = ({ transaction, onConfirm, onCancel, onCategoryChange }: ElegantFeedbackUIProps) => {
   // Visibility state
   const [visible, setVisible] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const { user } = useAuth();
+  const suggestedCategories = mainCategories;
   
   // Auto-dismiss timeout
   useEffect(() => {
@@ -35,7 +36,7 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
   const handleSelect = async (categoryId: string) => {
     try {
       // Update local UI first for responsiveness
-      onSelectCategory(categoryId);
+      onCategoryChange(categoryId);
       
       // Check if we have valid transaction data for updating mappings
       const transactionDescription = transaction?.description || '';
@@ -66,7 +67,7 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
   // Handle dismissal
   const handleDismiss = () => {
     setVisible(false);
-    onDismiss();
+    onCancel();
   };
   
   // Update category mapping in Supabase
@@ -139,43 +140,56 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       transition={{ duration: 0.3 }}
-      className="fixed bottom-20 left-0 right-0 mx-auto flex justify-center z-50 px-4"
+      className="bg-white rounded-xl shadow-md w-full overflow-hidden mt-4"
     >
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden">
-        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
-          <p className="m-0 text-sm font-medium text-gray-800">
-            Categoria per "{displayDescription}"?
-          </p>
-          <button 
-            className="bg-transparent border-none text-gray-400 text-lg p-1"
-            onClick={handleDismiss}
+      <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+        <p className="m-0 text-sm font-medium text-gray-800">
+          Categoria per "{displayDescription}"?
+        </p>
+        <button 
+          className="bg-transparent border-none text-gray-400 text-lg p-1"
+          onClick={handleDismiss}
+        >
+          ×
+        </button>
+      </div>
+      
+      <div className="flex flex-wrap gap-2 p-4">
+        {displayCategories.map(category => (
+          <button
+            key={category.id}
+            className="flex items-center gap-1.5 bg-opacity-10 rounded-full px-3 py-1.5 text-sm transition-all hover:-translate-y-0.5 hover:shadow-sm"
+            style={{ backgroundColor: `${category.color}20` }}
+            onClick={() => handleSelect(category.id)}
           >
-            ×
+            <span className="text-base">{category.icon}</span>
+            <span>{category.label}</span>
           </button>
-        </div>
+        ))}
         
-        <div className="flex flex-wrap gap-2 p-4">
-          {displayCategories.map(category => (
-            <button
-              key={category.id}
-              className="flex items-center gap-1.5 bg-opacity-10 rounded-full px-3 py-1.5 text-sm transition-all hover:-translate-y-0.5 hover:shadow-sm"
-              style={{ backgroundColor: `${category.color}20` }}
-              onClick={() => handleSelect(category.id)}
-            >
-              <span className="text-base">{category.icon}</span>
-              <span>{category.label}</span>
-            </button>
-          ))}
-          
-          {!expanded && suggestedCategories.length > 4 && (
-            <button 
-              className="text-emerald-500 bg-transparent border-none text-xs px-2 py-1.5"
-              onClick={() => setExpanded(true)}
-            >
-              Più opzioni
-            </button>
-          )}
-        </div>
+        {!expanded && suggestedCategories.length > 4 && (
+          <button 
+            className="text-emerald-500 bg-transparent border-none text-xs px-2 py-1.5"
+            onClick={() => setExpanded(true)}
+          >
+            Più opzioni
+          </button>
+        )}
+      </div>
+      
+      <div className="p-4 bg-slate-50 flex gap-3 border-t border-gray-100">
+        <button
+          onClick={onConfirm}
+          className="flex-1 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+        >
+          <Check size={18} /> Conferma
+        </button>
+        <button
+          onClick={onCancel}
+          className="py-2.5 px-4 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-medium transition-colors"
+        >
+          Annulla
+        </button>
       </div>
     </motion.div>
   );
