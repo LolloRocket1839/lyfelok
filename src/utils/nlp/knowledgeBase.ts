@@ -15,7 +15,7 @@ export class NlpKnowledgeBase {
           'pagto': 'pagato', 'paggato': 'pagato', 'paghato': 'pagato',
           'conprato': 'comprato', 'comprao': 'comprato', 'comperato': 'comprato',
           'acquistao': 'acquistato', 'acquistto': 'acquistato', 'aquistat': 'acquistato',
-          'costo': 'costo', 'coto': 'costo', 'cst': 'costo',
+          'coto': 'costo', 'cst': 'costo',
           'uscta': 'uscita', 'usita': 'uscita', 'uscit': 'uscita'
         },
         categories: {
@@ -58,10 +58,17 @@ export class NlpKnowledgeBase {
           'liquidità': ['conto', 'deposito', 'liquidità', 'risparmio', 'cd', 'certificato', 'bancario']
         },
         instrumentsVariations: {
-          'azone': 'azione', 'azzione': 'azione', 'titol': 'titolo',
-          'ef': 'etf', 'bitcon': 'bitcoin', 'bitcoi': 'bitcoin',
-          'cripto': 'crypto', 'obligazione': 'obbligazione', 'obbl': 'obbligazione',
-          'imobile': 'immobile', 'imobiliare': 'immobiliare'
+          'azone': 'azione', 
+          'azzione': 'azione', 
+          'titol': 'titolo',
+          'ef': 'etf', 
+          'bitcon': 'bitcoin', 
+          'bitcoi': 'bitcoin',
+          'cripto': 'crypto', 
+          'obligazione': 'obbligazione', 
+          'obbl': 'obbligazione',
+          'imobile': 'immobile', 
+          'imobiliare': 'immobiliare'
         }
       },
       
@@ -69,13 +76,27 @@ export class NlpKnowledgeBase {
       income: {
         base: ['ricevuto', 'guadagnato', 'incassato', 'entrata', 'stipendio', 'rimborso', 'pagamento'],
         variations: {
-          'ricevto': 'ricevuto', 'ricevuo': 'ricevuto', 'ricevut': 'ricevuto',
-          'guadagnto': 'guadagnato', 'guadagnat': 'guadagnato', 'guadagno': 'guadagnato',
-          'incasato': 'incassato', 'incassao': 'incassato', 'incassatoo': 'incassato',
-          'entata': 'entrata', 'entrta': 'entrata', 'entrataa': 'entrata',
-          'stipendo': 'stipendio', 'stipendyo': 'stipendio', 'stipndio': 'stipendio',
-          'rimborzo': 'rimborso', 'rimborsso': 'rimborso', 'rimbrso': 'rimborso',
-          'pagameno': 'pagamento', 'pagament': 'pagamento', 'pagamneto': 'pagamento'
+          'ricevto': 'ricevuto', 
+          'ricevuo': 'ricevuto', 
+          'ricevut': 'ricevuto',
+          'guadagnto': 'guadagnato', 
+          'guadagnat': 'guadagnato', 
+          'guadagno': 'guadagnato',
+          'incasato': 'incassato', 
+          'incassao': 'incassato', 
+          'incassatoo': 'incassato',
+          'entata': 'entrata', 
+          'entrta': 'entrata', 
+          'entrataa': 'entrata',
+          'stipendo': 'stipendio', 
+          'stipendyo': 'stipendio', 
+          'stipndio': 'stipendio',
+          'rimborzo': 'rimborso', 
+          'rimborsso': 'rimborso', 
+          'rimbrso': 'rimborso',
+          'pagameno': 'pagamento', 
+          'pagament': 'pagamento', 
+          'pagamneto': 'pagamento'
         },
         sources: {
           'lavoro': ['stipendio', 'salario', 'compenso', 'consulenza', 'freelance', 'parcella', 'fattura'],
@@ -84,8 +105,12 @@ export class NlpKnowledgeBase {
           'occasionale': ['vendita', 'regalo', 'rimborso', 'cashback', 'lotteria', 'vincita', 'donazione']
         },
         sourcesVariations: {
-          'stpendio': 'stipendio', 'salrio': 'salario', 'bonuss': 'bonus',
-          'divdendo': 'dividendo', 'divident': 'dividendo', 'intresse': 'interesse'
+          'stpendio': 'stipendio', 
+          'salrio': 'salario', 
+          'bonuss': 'bonus',
+          'divdendo': 'dividendo', 
+          'divident': 'dividendo', 
+          'intresse': 'interesse'
         }
       },
       
@@ -93,12 +118,23 @@ export class NlpKnowledgeBase {
       incomeIncrease: {
         base: ['aumento', 'promozione', 'avanzamento', 'incremento', 'adeguamento', 'nuovo stipendio', 'nuovo lavoro'],
         variations: {
-          'aumeto': 'aumento', 'aumnt': 'aumento', 'aumennto': 'aumento',
-          'promzione': 'promozione', 'promozine': 'promozione', 'promzione': 'promozione',
-          'avanzameto': 'avanzamento', 'avanzment': 'avanzamento', 'avanzament': 'avanzamento',
-          'incremeto': 'incremento', 'incr': 'incremento', 'increment': 'incremento',
-          'adeguameto': 'adeguamento', 'adegument': 'adeguamento', 'adeg': 'adeguamento',
-          'nuovostipendio': 'nuovo stipendio', 'nuovolavoro': 'nuovo lavoro'
+          'aumeto': 'aumento', 
+          'aumnt': 'aumento', 
+          'aumennto': 'aumento',
+          'promzione': 'promozione', 
+          'promozine': 'promozione', 
+          'promzione': 'promozione',
+          'avanzameto': 'avanzamento', 
+          'avanzment': 'avanzamento', 
+          'avanzament': 'avanzamento',
+          'incremeto': 'incremento', 
+          'incr': 'incremento', 
+          'increment': 'incremento',
+          'adeguameto': 'adeguamento', 
+          'adegument': 'adeguamento', 
+          'adeg': 'adeguamento',
+          'nuovostipendio': 'nuovo stipendio', 
+          'nuovolavoro': 'nuovo lavoro'
         }
       }
     };

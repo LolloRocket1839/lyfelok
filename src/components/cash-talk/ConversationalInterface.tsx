@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
@@ -8,6 +9,8 @@ import { TransactionRouter, convertAnalysisToTransaction, Transaction, Transacti
 import ElegantFeedbackUI from './ElegantFeedbackUI';
 import { mainCategories } from '@/utils/transactionStore';
 import ResponsiveCashTalk from './ResponsiveCashTalk';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, X } from 'lucide-react';
 
 interface ConversationalInterfaceProps {
   viewSetter: (view: 'dashboard' | 'investments' | 'expenses' | 'projections') => void;
@@ -20,11 +23,13 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
   const transactionRouterRef = useRef<TransactionRouter | null>(null);
   const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
   const [lastTransactionId, setLastTransactionId] = useState<number | null>(null);
+  const [isExpanded, setIsExpanded] = useState(true);
   
   const [feedbackNeeded, setFeedbackNeeded] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState<any>(null);
   const [suggestedCategories, setSuggestedCategories] = useState<any[]>([]);
   const [lastTransaction, setLastTransaction] = useState<any>(null);
+  const [transactionCompleted, setTransactionCompleted] = useState(false);
   
   const {
     handleExpenseSubmit,
@@ -80,7 +85,14 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         }
       }
       
+      // Automatically collapse Cash Talk after transaction completion
       updateUIBasedOnTransaction(transaction);
+      setTransactionCompleted(true);
+      
+      // After a short delay, minimize the interface to give visual feedback first
+      setTimeout(() => {
+        setIsExpanded(false);
+      }, 1500);
     };
     
     const unsubscribe = transactionStore.subscribe('ALL', handleTransaction);
@@ -166,6 +178,10 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       setFeedbackNeeded(false);
       setCurrentTransaction(null);
       setSuggestedCategories([]);
+      // Collapse after feedback
+      setTimeout(() => {
+        setIsExpanded(false);
+      }, 1000);
     }
   };
 
@@ -177,6 +193,11 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     setFeedbackNeeded(false);
     setCurrentTransaction(null);
     setSuggestedCategories([]);
+    
+    // Collapse after feedback dismissed
+    setTimeout(() => {
+      setIsExpanded(false);
+    }, 500);
   };
 
   const handleAnalyze = async (inputText: string): Promise<void> => {
@@ -185,6 +206,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     }
     
     setProcessing(true);
+    setTransactionCompleted(false);
     
     const lowerText = inputText.toLowerCase();
     
@@ -260,6 +282,7 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
     };
     
     console.log('Constructed transaction from form:', transaction);
+    setTransactionCompleted(false);
     
     return new Promise((resolve, reject) => {
       try {
@@ -277,6 +300,10 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
         reject(error);
       }
     });
+  };
+
+  const toggleExpanded = () => {
+    setIsExpanded(prev => !prev);
   };
 
   const showToast = (message: string, variant: 'default' | 'destructive' = 'default') => {
@@ -311,13 +338,51 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
 
   return (
     <>
-      <ResponsiveCashTalk 
-        onSubmit={handleAnalyze}
-        onFormSubmit={handleFormSubmit}
-        isProcessing={processing}
-        categories={mainCategories}
-        lastTransaction={lastTransaction}
-      />
+      <AnimatePresence mode="wait">
+        {isExpanded ? (
+          <motion.div
+            key="expanded"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="relative"
+          >
+            <ResponsiveCashTalk 
+              onSubmit={handleAnalyze}
+              onFormSubmit={handleFormSubmit}
+              isProcessing={processing}
+              categories={mainCategories}
+              lastTransaction={lastTransaction}
+              transactionCompleted={transactionCompleted}
+            />
+            
+            {/* Collapse button */}
+            <motion.button
+              className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors z-20"
+              onClick={toggleExpanded}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <X size={16} />
+            </motion.button>
+          </motion.div>
+        ) : (
+          <motion.button
+            key="collapsed"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3 }}
+            onClick={toggleExpanded}
+            className="fixed bottom-6 right-6 flex items-center justify-center w-12 h-12 rounded-full bg-[#06D6A0] text-white shadow-md hover:shadow-lg hover:bg-[#05c090] transition-all z-50"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <MessageCircle size={20} />
+          </motion.button>
+        )}
+      </AnimatePresence>
       
       {feedbackNeeded && currentTransaction && (
         <ElegantFeedbackUI

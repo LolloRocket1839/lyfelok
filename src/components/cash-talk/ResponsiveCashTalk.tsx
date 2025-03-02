@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, MessageSquare, X, HelpCircle, Loader2 } from 'lucide-react';
+import { ArrowUp, MessageSquare, X, HelpCircle, Loader2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { mainCategories } from '@/utils/transactionStore';
@@ -29,6 +29,7 @@ interface ResponsiveCashTalkProps {
     date: string;
   } | null;
   onFormSubmit?: (formData: TransactionFormData) => Promise<void>;
+  transactionCompleted?: boolean; // New prop to show success state
 }
 
 const ResponsiveCashTalk = ({
@@ -36,7 +37,8 @@ const ResponsiveCashTalk = ({
   isProcessing = false,
   categories = mainCategories,
   lastTransaction = null,
-  onFormSubmit
+  onFormSubmit,
+  transactionCompleted = false
 }: ResponsiveCashTalkProps) => {
   const { toast } = useToast();
   const [inputValue, setInputValue] = useState('');
@@ -45,6 +47,8 @@ const ResponsiveCashTalk = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [showFormMode, setShowFormMode] = useState(false);
+  // Show success animation briefly
+  const [showSuccess, setShowSuccess] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState<TransactionFormData>({
@@ -64,6 +68,21 @@ const ResponsiveCashTalk = ({
     "es: investito 200€ in ETF",
   ];
   
+  // Handle transaction completion feedback
+  useEffect(() => {
+    if (transactionCompleted) {
+      setShowSuccess(true);
+      setInputValue('');
+      
+      // Reset success state after animation completes
+      const timer = setTimeout(() => {
+        setShowSuccess(false);
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [transactionCompleted]);
+  
   // Rotate placeholders
   useEffect(() => {
     const interval = setInterval(() => {
@@ -81,6 +100,11 @@ const ResponsiveCashTalk = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Update processing state from props
+  useEffect(() => {
+    setProcessing(isProcessing);
+  }, [isProcessing]);
 
   // Handle text submission
   const handleTextSubmit = (e?: React.FormEvent) => {
@@ -206,11 +230,23 @@ const ResponsiveCashTalk = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[980px] z-10"
+      className="relative w-[90%] max-w-[980px] mx-auto z-10"
     >
       <div className="flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <AnimatePresence mode="wait">
-          {showFormMode ? (
+          {showSuccess ? (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-center justify-center p-4 bg-emerald-50 text-emerald-600"
+            >
+              <div className="flex items-center gap-2">
+                <Check size={20} className="text-emerald-500" />
+                <span className="font-medium">Transazione completata!</span>
+              </div>
+            </motion.div>
+          ) : showFormMode ? (
             <motion.form 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
