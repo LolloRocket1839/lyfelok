@@ -2,14 +2,13 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Plus, Pencil, Trash2, Search, Filter, ArrowUp, ChevronDown, ChevronUp,
+  Plus, Pencil, Trash2, Search, Filter, ArrowUp, ChevronDown,
   Wallet, CreditCard, PiggyBank
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
@@ -54,7 +53,6 @@ const FinancialManagementView = ({
   const [activeTab, setActiveTab] = useState<'expenses' | 'investments'>('expenses');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
-  const [showSummaryDetails, setShowSummaryDetails] = useState(false);
   
   // Expenses state
   const [periodFilter, setPeriodFilter] = useState('Questo mese');
@@ -82,10 +80,6 @@ const FinancialManagementView = ({
   const totalBudget = expenses.reduce((sum, expense) => sum + expense.baseline, 0);
   const totalSpent = expenses.reduce((sum, expense) => sum + expense.spent, 0);
   const spentPercentage = (totalSpent / totalBudget) * 100;
-  
-  // Calculate net balance
-  const netBalance = totalDeposits - totalSpent;
-  const isPositiveBalance = netBalance >= 0;
   
   // Get category icon emoji for expenses
   const getCategoryEmoji = (category: string) => {
@@ -214,11 +208,6 @@ const FinancialManagementView = ({
     (deposit.date && deposit.date.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   
-  // Handle transaction add based on current active tab
-  const handleAddTransaction = () => {
-    setActiveModal(activeTab === 'expenses' ? 'expense' : 'deposit');
-  };
-  
   return (
     <div className="min-h-screen bg-white pb-20">
       {/* Header */}
@@ -227,87 +216,76 @@ const FinancialManagementView = ({
       </div>
 
       <div className="px-4 md:px-6 -mt-4 max-w-7xl mx-auto">
-        {/* Unified Summary Card with Collapsible Content */}
-        <Collapsible 
-          open={showSummaryDetails}
-          onOpenChange={setShowSummaryDetails}
-          className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden"
-        >
-          <div className="p-4 flex items-center justify-between">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          {/* Expenses Summary */}
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+            className="bg-white rounded-xl shadow-sm p-4 h-[90px]"
+          >
+            <div className="flex items-center">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-red-50 text-red-500 mr-3">
+                <CreditCard size={20} />
+              </div>
+              <div>
+                <div className="text-sm text-gray-500 font-medium">Budget Mensile</div>
+                <div className="flex items-baseline">
+                  <span className="text-2xl font-semibold text-gray-800">{formatCurrency(totalSpent)}</span>
+                  <span className="text-base text-gray-500 ml-2">/ {formatCurrency(totalBudget)}</span>
+                </div>
+                <Progress value={spentPercentage} className="h-[3px] mt-2 w-full max-w-[200px]" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Investments Summary */}
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+            className="bg-white rounded-xl shadow-sm p-4 h-[90px]"
+          >
+            <div className="flex items-center">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-emerald-50 text-emerald-500 mr-3">
+                <PiggyBank size={20} />
+              </div>
+              <div>
+                <div className="text-sm text-gray-500 font-medium">Totale Investito</div>
+                <div className="flex items-baseline">
+                  <span className="text-2xl font-semibold text-gray-800">{formatCurrency(totalDeposits)}</span>
+                </div>
+                <div className="text-sm text-emerald-600 mt-1">
+                  {deposits.length} investimenti attivi
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Balance Summary */}
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+            className="bg-white rounded-xl shadow-sm p-4 h-[90px]"
+          >
             <div className="flex items-center">
               <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-50 text-blue-500 mr-3">
                 <Wallet size={20} />
               </div>
               <div>
-                <h3 className="text-sm text-gray-500 font-medium">Panoramica Finanziaria</h3>
+                <div className="text-sm text-gray-500 font-medium">Saldo Netto</div>
                 <div className="flex items-baseline">
-                  <span className={`text-2xl font-semibold ${isPositiveBalance ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {formatCurrency(netBalance)}
-                  </span>
-                  <span className="text-sm text-gray-500 ml-2">saldo netto</span>
+                  <span className="text-2xl font-semibold text-gray-800">{formatCurrency(totalDeposits - totalSpent)}</span>
+                </div>
+                <div className="text-sm text-blue-600 mt-1">
+                  Differenza positiva
                 </div>
               </div>
             </div>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="p-2">
-                {showSummaryDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-          
-          <CollapsibleContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 pt-0 border-t border-gray-100">
-              {/* Budget Details */}
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-red-50 text-red-500 mr-3">
-                  <CreditCard size={20} />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 font-medium">Budget Mensile</div>
-                  <div className="flex items-baseline">
-                    <span className="text-lg font-semibold text-gray-800">{formatCurrency(totalSpent)}</span>
-                    <span className="text-sm text-gray-500 ml-2">/ {formatCurrency(totalBudget)}</span>
-                  </div>
-                  <Progress value={spentPercentage} className="h-[3px] mt-2 w-full max-w-[200px]" />
-                </div>
-              </div>
-
-              {/* Investments Details */}
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-emerald-50 text-emerald-500 mr-3">
-                  <PiggyBank size={20} />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 font-medium">Totale Investito</div>
-                  <div className="flex items-baseline">
-                    <span className="text-lg font-semibold text-gray-800">{formatCurrency(totalDeposits)}</span>
-                  </div>
-                  <div className="text-sm text-emerald-600 mt-1">
-                    {deposits.length} investimenti attivi
-                  </div>
-                </div>
-              </div>
-
-              {/* Net Balance Details */}
-              <div className="flex items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isPositiveBalance ? 'bg-emerald-50 text-emerald-500' : 'bg-red-50 text-red-500'} mr-3`}>
-                  <Wallet size={20} />
-                </div>
-                <div>
-                  <div className="text-sm text-gray-500 font-medium">Stato Bilancio</div>
-                  <div className="flex items-baseline">
-                    <span className={`text-lg font-semibold ${isPositiveBalance ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {formatCurrency(Math.abs(netBalance))}
-                    </span>
-                  </div>
-                  <div className={`text-sm mt-1 ${isPositiveBalance ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {isPositiveBalance ? 'Saldo disponibile' : 'Saldo negativo'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+          </motion.div>
+        </div>
 
         {/* Search and Filters */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between mb-6 gap-4">
@@ -335,11 +313,11 @@ const FinancialManagementView = ({
             </Button>
             
             <Button 
-              onClick={handleAddTransaction}
+              onClick={() => setActiveModal(activeTab === 'expenses' ? 'expense' : 'deposit')}
               className="h-[40px] bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2"
             >
               <Plus size={16} />
-              Aggiungi Transazione
+              Aggiungi {activeTab === 'expenses' ? 'Spesa' : 'Investimento'}
             </Button>
           </div>
         </div>
