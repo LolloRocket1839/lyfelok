@@ -1,150 +1,171 @@
+export interface VariationMap {
+  [key: string]: string;
+}
 
-import { KnowledgeBaseData } from './types';
+export interface CategoryTerms {
+  [key: string]: string[];
+}
+
+export interface CategoryVariations {
+  [key: string]: string[];
+}
+
+export interface KnowledgeCategory {
+  base: string[];
+  variations: VariationMap;
+  categories?: CategoryTerms;
+  categoriesVariations?: CategoryVariations;
+  instruments?: CategoryTerms;
+  instrumentsVariations?: VariationMap;
+  sources?: CategoryTerms;
+  sourcesVariations?: VariationMap;
+}
+
+export interface KnowledgeBaseData {
+  expenses: KnowledgeCategory;
+  investments: KnowledgeCategory;
+  income: KnowledgeCategory;
+  incomeIncrease: KnowledgeCategory;
+}
 
 export class NlpKnowledgeBase {
-  private data: KnowledgeBaseData;
+  private knowledgeBase: KnowledgeBaseData;
+  private localDictionary: any;
   
   constructor() {
-    // Database di conoscenza finanziaria
-    this.data = {
-      // Termini relativi alle SPESE con possibili errori di battitura
+    // Inizializzazione del knowledge base
+    this.knowledgeBase = {
       expenses: {
-        base: ['spesa', 'pagato', 'comprato', 'acquistato', 'costo', 'uscita'],
+        base: ['spesa', 'pagato', 'comprato', 'acquistato', 'speso', 'costo'],
         variations: {
-          'spsa': 'spesa', 'speza': 'spesa', 'spessa': 'spesa',
-          'pagto': 'pagato', 'paggato': 'pagato', 'paghato': 'pagato',
-          'conprato': 'comprato', 'comprao': 'comprato', 'comperato': 'comprato',
-          'acquistao': 'acquistato', 'acquistto': 'acquistato', 'aquistat': 'acquistato',
-          'coto': 'costo', 'cst': 'costo',
-          'uscta': 'uscita', 'usita': 'uscita', 'uscit': 'uscita'
+          'spesa': 'speso',
+          'pagato': 'pagamento',
+          'comprato': 'compro',
+          'acquistato': 'acquisto'
         },
         categories: {
-          'cibo': ['pizza', 'ristorante', 'pranzo', 'cena', 'supermercato', 'spesa', 'bar', 'caffè', 'gelato', 'panino'],
-          'casa': ['affitto', 'mutuo', 'bolletta', 'luce', 'gas', 'acqua', 'wifi', 'condominio', 'riparazione'],
-          'trasporti': ['benzina', 'carburante', 'treno', 'bus', 'metro', 'taxi', 'uber', 'aereo', 'biglietto'],
-          'intrattenimento': ['cinema', 'teatro', 'concerto', 'netflix', 'spotify', 'disney', 'abbonamento', 'videogioco'],
-          'salute': ['farmacia', 'medico', 'dottore', 'visita', 'esame', 'analisi', 'dentista', 'terapia', 'palestra'],
-          'abbigliamento': ['vestiti', 'scarpe', 'giacca', 'pantaloni', 'camicia', 'maglia', 'jeans', 'cappotto']
+          food: ['alimentari', 'cibo', 'ristorante', 'supermercato', 'spesa', 'mangiare', 'pranzo', 'cena', 'colazione', 'caffè'],
+          rent: ['affitto', 'casa', 'appartamento', 'stanza', 'alloggio'],
+          utility: ['bolletta', 'luce', 'gas', 'acqua', 'internet', 'telefono', 'elettricità'],
+          transport: ['trasporto', 'autobus', 'treno', 'metro', 'taxi', 'carburante', 'benzina', 'diesel'],
+          entertainment: ['divertimento', 'cinema', 'concerto', 'teatro', 'giochi', 'abbonamento', 'netflix', 'spotify'],
+          health: ['salute', 'medico', 'farmacia', 'medicinale', 'visita', 'dottore', 'dentista'],
+          education: ['educazione', 'corso', 'università', 'libri', 'scuola', 'lezioni']
         },
         categoriesVariations: {
-          "cibo": ["food", "groceries", "cibo", "alimentari", "supermercato", "spesa", "pranzo", "cena", "colazione", "pizza", "ristorante"],
-          "trasporti": ["transport", "travel", "trasporti", "trasporto", "treno", "metro", "bus", "taxi", "uber", "carburante", "benzina", "gasolio", "autostrada", "pedaggio"],
-          "casa": ["house", "home", "casa", "affitto", "mutuo", "bollette", "condominio", "arredamento", "manutenzione"],
-          "salute": ["health", "medical", "salute", "medico", "farmacia", "dottore", "dentista", "terapia", "visita"],
-          "entertainment": ["entertainment", "leisure", "intrattenimento", "svago", "divertimento", "cinema", "teatro", "concerto", "hobby", "streaming", "abbonamento"],
-          "educazione": ["education", "learning", "educazione", "formazione", "corso", "università", "libri", "studio"],
-          "abbigliamento": ["clothing", "abbigliamento", "vestiti", "scarpe", "accessori", "moda"],
-          "tecnologia": ["technology", "tech", "tecnologia", "elettronica", "dispositivi", "computer", "smartphone", "gadget"],
-          "varie": ["other", "misc", "varie", "extra"]
+          food: ['alimentare', 'ristoranti', 'supermercati'],
+          rent: ['affitti', 'case', 'appartamenti', 'abitazione'],
+          utility: ['bollette', 'fattura', 'utenze'],
+          transport: ['trasporti', 'mezzi', 'viaggio', 'spostamenti'],
+          entertainment: ['intrattenimento', 'svago', 'tempo libero', 'abbonamenti'],
+          health: ['sanitario', 'sanitarie', 'medicine', 'farmaci'],
+          education: ['formazione', 'studio', 'università', 'master']
         }
       },
-      
-      // Termini relativi agli INVESTIMENTI con possibili errori di battitura
       investments: {
-        base: ['investito', 'investimento', 'depositato', 'risparmiato', 'messo', 'comprato'],
+        base: ['investimento', 'investito', 'azioni', 'etf', 'obbligazioni', 'fondo', 'risparmi'],
         variations: {
-          'invstito': 'investito', 'investio': 'investito', 'ivestito': 'investito',
-          'investimeno': 'investimento', 'invstimento': 'investimento', 'investmento': 'investimento',
-          'depstato': 'depositato', 'depositao': 'depositato', 'depostato': 'depositato',
-          'risparmato': 'risparmiato', 'risparmito': 'risparmiato', 'rispariato': 'risparmiato',
-          'mess': 'messo', 'meso': 'messo', 'mezzo': 'messo'
+          'investimento': 'investito',
+          'investire': 'investimento',
+          'azioni': 'azionario',
+          'obbligazioni': 'obbligazionario',
+          'fondo': 'fondi'
+        },
+        categories: {
+          stocks: ['azioni', 'titoli', 'borsa', 'nasdaq', 'dow jones', 'ftse', 'azionario'],
+          etf: ['etf', 'exchange traded fund', 'index fund', 'indice', 'msci world', 'sp500', 'nasdaq'],
+          bonds: ['obbligazioni', 'btp', 'treasury', 'bond', 'tasso fisso', 'governativo', 'corporate'],
+          realestate: ['immobiliare', 'immobile', 'casa', 'appartamento', 'affitto', 'reit'],
+          crypto: ['crypto', 'bitcoin', 'ethereum', 'altcoin', 'criptovalute', 'token', 'blockchain'],
+          savings: ['risparmio', 'conto deposito', 'liquidità', 'salvadanaio', 'accantonare'],
+          p2p: ['prestito', 'p2p', 'lending', 'crowdfunding', 'marketplace lending']
+        },
+        categoriesVariations: {
+          stocks: ['azionario', 'società', 'aziende', 'mercato azionario'],
+          etf: ['fondi indicizzati', 'tracker', 'etfs'],
+          bonds: ['obbligazionario', 'titoli di stato', 'cedola', 'rendimento fisso'],
+          realestate: ['real estate', 'proprietà', 'immobili', 'terreni'],
+          crypto: ['criptovaluta', 'cripto', 'satoshi', 'mining', 'staking'],
+          savings: ['risparmi', 'deposito', 'accumulare', 'accantonamento'],
+          p2p: ['prestiti', 'credito', 'finanziamento', 'microfinanza']
         },
         instruments: {
-          'azioni': ['azione', 'azioni', 'titolo', 'titoli', 'borsa', 'azionario'],
-          'etf': ['etf', 'fondo', 'index', 'indice', 'indicizzato', 'vanguard', 'ishares', 'lyxor'],
-          'crypto': ['bitcoin', 'ethereum', 'crypto', 'criptovaluta', 'btc', 'eth', 'altcoin'],
-          'obbligazioni': ['obbligazione', 'bond', 'btp', 'cct', 'buono', 'tesoro', 'governativo'],
-          'immobiliare': ['immobile', 'casa', 'terreno', 'reit', 'affitto', 'rent', 'noleggio'],
-          'liquidità': ['conto', 'deposito', 'liquidità', 'risparmio', 'cd', 'certificato', 'bancario']
+          platforms: ['degiro', 'directa', 'fineco', 'ing', 'binance', 'coinbase', 'mintos', 'kraken']
         },
         instrumentsVariations: {
-          'azone': 'azione', 
-          'azzione': 'azione', 
-          'titol': 'titolo',
-          'ef': 'etf', 
-          'bitcon': 'bitcoin', 
-          'bitcoi': 'bitcoin',
-          'cripto': 'crypto', 
-          'obligazione': 'obbligazione', 
-          'obbl': 'obbligazione',
-          'imobile': 'immobile', 
-          'imobiliare': 'immobiliare'
+          'degiro': 'degiro bank',
+          'directa': 'directa sim',
+          'fineco': 'finecobank'
         }
       },
-      
-      // Termini relativi agli ENTRATE con possibili errori di battitura
       income: {
-        base: ['ricevuto', 'guadagnato', 'incassato', 'entrata', 'stipendio', 'rimborso', 'pagamento'],
+        base: ['stipendio', 'entrata', 'ricevuto', 'incassato', 'guadagnato', 'reddito', 'salario'],
         variations: {
-          'ricevto': 'ricevuto', 
-          'ricevuo': 'ricevuto', 
-          'ricevut': 'ricevuto',
-          'guadagnto': 'guadagnato', 
-          'guadagnat': 'guadagnato', 
-          'guadagno': 'guadagnato',
-          'incasato': 'incassato', 
-          'incassao': 'incassato', 
-          'incassatoo': 'incassato',
-          'entata': 'entrata', 
-          'entrta': 'entrata', 
-          'entrataa': 'entrata',
-          'stipendo': 'stipendio', 
-          'stipendyo': 'stipendio', 
-          'stipndio': 'stipendio',
-          'rimborzo': 'rimborso', 
-          'rimborsso': 'rimborso', 
-          'rimbrso': 'rimborso',
-          'pagameno': 'pagamento', 
-          'pagament': 'pagamento', 
-          'pagamneto': 'pagamento'
+          'stipendio': 'stipendiato',
+          'entrata': 'entrate',
+          'ricevuto': 'ricevere',
+          'incassato': 'incassare',
+          'guadagnato': 'guadagno'
         },
         sources: {
-          'lavoro': ['stipendio', 'salario', 'compenso', 'consulenza', 'freelance', 'parcella', 'fattura'],
-          'extra': ['bonus', 'premio', 'incentivo', 'commissione', 'straordinario', 'tredicesima', 'quattordicesima'],
-          'passivo': ['affitto', 'rendita', 'dividendo', 'royalty', 'interesse', 'cedola'],
-          'occasionale': ['vendita', 'regalo', 'rimborso', 'cashback', 'lotteria', 'vincita', 'donazione']
+          salary: ['stipendio', 'salario', 'busta paga', 'lavoro', 'mensile', 'fisso'],
+          freelance: ['freelance', 'lavoro autonomo', 'partita iva', 'consulenza', 'progetto', 'cliente'],
+          passive: ['passivo', 'dividendi', 'interessi', 'rendita', 'affitto', 'royalty', 'cedolare'],
+          gifts: ['regalo', 'donazione', 'eredità', 'vincita', 'bonus', 'cashback']
         },
         sourcesVariations: {
-          'stpendio': 'stipendio', 
-          'salrio': 'salario', 
-          'bonuss': 'bonus',
-          'divdendo': 'dividendo', 
-          'divident': 'dividendo', 
-          'intresse': 'interesse'
+          'salary': 'stipendi',
+          'freelance': 'professionista',
+          'passive': 'passivi',
+          'gifts': 'regali'
         }
       },
-      
-      // Termini relativi agli AUMENTI DI REDDITO con possibili errori di battitura
       incomeIncrease: {
-        base: ['aumento', 'promozione', 'avanzamento', 'incremento', 'adeguamento', 'nuovo stipendio', 'nuovo lavoro'],
+        base: ['aumento', 'promozione', 'incremento', 'maggiorazione', 'adeguamento', 'contratto', 'rinnovo'],
         variations: {
-          'aumeto': 'aumento', 
-          'aumnt': 'aumento', 
-          'aumennto': 'aumento',
-          'promzione': 'promozione', 
-          'promozine': 'promozione', 
-          'promzione': 'promozione',
-          'avanzameto': 'avanzamento', 
-          'avanzment': 'avanzamento', 
-          'avanzament': 'avanzamento',
-          'incremeto': 'incremento', 
-          'incr': 'incremento', 
-          'increment': 'incremento',
-          'adeguameto': 'adeguamento', 
-          'adegument': 'adeguamento', 
-          'adeg': 'adeguamento',
-          'nuovostipendio': 'nuovo stipendio', 
-          'nuovolavoro': 'nuovo lavoro'
+          'aumento': 'aumentato',
+          'promozione': 'promosso',
+          'incremento': 'incrementato',
+          'maggiorazione': 'maggiorato'
         }
       }
     };
+    
+    // Vocabolario locale per correzione di specifici errori comuni in italiano
+    this.localDictionary = {
+      'speza': 'spesa',
+      'investimento': 'investimento',
+      'stippendio': 'stipendio',
+      'afitto': 'affitto',
+      'risparmi': 'risparmi',
+      'azioni': 'azioni',
+      'obbligazioni': 'obbligazioni',
+      'etf': 'etf',
+      'guadagno': 'guadagno',
+      'mangiato': 'mangiato',
+      'bolletta': 'bolletta',
+      'boleta': 'bolletta',
+      'bonifico': 'bonifico',
+      'bonnifico': 'bonifico',
+      'aquisto': 'acquisto',
+      'pagatto': 'pagato',
+      'riceuto': 'ricevuto',
+      'aumento': 'aumento',
+      'promosione': 'promozione'
+    };
   }
   
-  public getData(): KnowledgeBaseData {
-    return this.data;
+  /**
+   * Ottieni la base di conoscenza
+   */
+  getKnowledgeBase(): KnowledgeBaseData {
+    return this.knowledgeBase;
   }
   
-  public getCategory(category: string): any {
-    return this.data[category as keyof KnowledgeBaseData];
+  /**
+   * Ottieni il vocabolario locale
+   */
+  getLocalDictionary(): any {
+    return this.localDictionary;
   }
 }

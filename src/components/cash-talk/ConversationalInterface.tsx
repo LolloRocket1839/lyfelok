@@ -1,189 +1,277 @@
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useLifestyleLock } from '@/hooks/useLifestyleLock';
-import { useAuth } from '@/contexts/AuthContext';
-import enhancedNlpProcessor from '@/utils/enhancedNlpProcessor';
-import { transactionStore } from '@/utils/transactionStore';
-import { TransactionRouter, convertAnalysisToTransaction, Transaction, TransactionType } from '@/utils/transactionRouter';
-import ElegantFeedbackUI from './ElegantFeedbackUI';
-import { mainCategories } from '@/utils/transactionStore';
-import ResponsiveCashTalk from './ResponsiveCashTalk';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X } from 'lucide-react';
+import { convertAnalysisToTransaction } from '@/utils/transactionRouter';
+import { transactionStore } from '@/utils/transactionStore';
+import enhancedNlpProcessor from '@/utils/enhancedNlpProcessor';
+import ElegantFeedbackUI from './ElegantFeedbackUI';
+import ResponsiveCashTalk from './ResponsiveCashTalk';
+import { supabase } from '@/lib/supabase';
+import { useTransactionPersistence } from '@/hooks/useTransactionPersistence';
 
 interface ConversationalInterfaceProps {
   viewSetter: (view: 'dashboard' | 'investments' | 'expenses' | 'projections') => void;
 }
 
-export default function ConversationalInterface({ viewSetter }: ConversationalInterfaceProps) {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [processing, setProcessing] = useState(false);
-  const transactionRouterRef = useRef<TransactionRouter | null>(null);
-  const [transactionHistory, setTransactionHistory] = useState<any[]>([]);
-  const [lastTransactionId, setLastTransactionId] = useState<number | null>(null);
-  const [isExpanded, setIsExpanded] = useState(true);
+const ConversationalInterface = ({ viewSetter }: ConversationalInterfaceProps) => {
   
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<any[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [transactionCompleted, setTransactionCompleted] = useState(false);
   const [feedbackNeeded, setFeedbackNeeded] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState<any>(null);
   const [suggestedCategories, setSuggestedCategories] = useState<any[]>([]);
-  const [lastTransaction, setLastTransaction] = useState<any>(null);
-  const [transactionCompleted, setTransactionCompleted] = useState(false);
+  const messageEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const { expenses, setExpenses } = useLifestyleLock();
   
-  const {
-    handleExpenseSubmit,
-    handleAddDeposit,
-    handleIncomeIncrease,
-    setExpenseCategory,
-    setExpenseSpent,
-    setExpenseBaseline,
-    setExpenseDate,
-    setDepositAmount,
-    setDepositCategory,
-    setDepositDescription,
-    setDepositDate,
-    setNewIncomeValue,
-    setIncomeDate,
-    resetExpenseForm,
-    resetDepositForm,
-  } = useLifestyleLock();
-
+  // Use our new transaction persistence hook
+  const { 
+    saveTransaction, 
+    isLoading, 
+    isOnline,
+    updateUIBasedOnTransaction
+  } = useTransactionPersistence();
+  
+  // Get current user
+  const [userId, setUserId] = useState<string | null>(null);
+  
   useEffect(() => {
-    if (user?.id) {
-      enhancedNlpProcessor.setUserId(user.id);
-      enhancedNlpProcessor.initialize();
-      
-      if (!transactionRouterRef.current) {
-        transactionRouterRef.current = new TransactionRouter(transactionStore);
-      }
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const handleTransaction = async (transaction: any) => {
-      console.log('Transaction notification received:', transaction);
-      
-      setTransactionHistory(prev => [transaction, ...prev].slice(0, 10));
-      setLastTransaction(transaction);
-      
-      setLastTransactionId(transactionHistory.length);
-      
-      if (user?.id && transaction.type === 'USCITA') {
-        const result = await transactionStore.processTransactionWithSmartCategories(
-          transaction,
-          user.id
-        );
+    const getUserId = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUserId(data.user.id);
         
-        if (result.requireFeedback) {
-          setCurrentTransaction(result.transaction);
-          setSuggestedCategories(result.suggestedCategories.length > 0 
-            ? result.suggestedCategories 
-            : mainCategories);
-          setFeedbackNeeded(true);
-          return;
+        // Initialize NLP processor with user ID
+        enhancedNlpProcessor.setUserId(data.user.id);
+        enhancedNlpProcessor.initialize();
+      }
+    };
+    
+    getUserId();
+  }, []);
+  
+  // Scroll to bottom of messages
+  useEffect(() => {
+    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+  
+  // Add initial welcome message
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        {
+          sender: 'assistant',
+          text: 'Ciao! Puoi dirmi le tue spese o entrate, ad esempio: "Ho speso 25€ per la spesa" o "Ho guadagnato 1500€ di stipendio".',
+          timestamp: new Date()
+        }
+      ]);
+    }
+  }, []);
+  
+  // Analizza l'input utente utilizzando l'EnhancedNlpProcessor
+  const handleAnalyze = async (userInput: string) => {
+    if (!userInput.trim()) return;
+    
+    // Se siamo offline e non è stato autenticato l'utente
+    if (!isOnline && !userId) {
+      toast({
+        title: "Connessione assente",
+        description: "Per utilizzare Cash Talk in modalità offline, devi prima effettuare l'accesso.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsAnalyzing(true);
+    setIsExpanded(true);
+    
+    // Aggiungi il messaggio dell'utente
+    setMessages(prev => [...prev, {
+      sender: 'user',
+      text: userInput,
+      timestamp: new Date()
+    }]);
+    
+    setInput('');
+    
+    try {
+      // Inizializza il processore NLP se necessario
+      if (!userId) {
+        // Usa un ID utente temporaneo per dimostrazioni
+        enhancedNlpProcessor.setUserId('demo-user');
+      }
+      
+      // Analyze the input
+      const analysis = enhancedNlpProcessor.analyzeText(userInput);
+      
+      // Convert the NLP analysis to a transaction
+      const transaction = convertAnalysisToTransaction(analysis);
+      
+      // Get the process result from the transaction store with smart categorization
+      const processResult = await transactionStore.processTransactionWithSmartCategories(
+        transaction,
+        userId || 'demo-user'
+      );
+      
+      // Set analysis result message
+      setMessages(prev => [...prev, {
+        sender: 'assistant',
+        analysis: transaction,
+        timestamp: new Date()
+      }]);
+      
+      // Check if we need to request feedback on the category
+      if (processResult.requireFeedback) {
+        setFeedbackNeeded(true);
+        setCurrentTransaction(processResult.transaction);
+        setSuggestedCategories(processResult.suggestedCategories);
+      } else {
+        // If no feedback needed, save the transaction
+        const savedTransaction = await saveTransaction(transaction);
+        
+        if (savedTransaction) {
+          setMessages(prev => [...prev, {
+            sender: 'assistant',
+            text: getConfirmationMessage(transaction),
+            timestamp: new Date()
+          }]);
+          
+          updateUIBasedOnTransaction(transaction);
+          setTransactionCompleted(true);
+          
+          setTimeout(() => {
+            setIsExpanded(false);
+          }, 1500);
+          
+          // Automatic view switching based on transaction type
+          if (transaction.type === 'USCITA') {
+            viewSetter('expenses');
+          } else if (transaction.type === 'INVESTIMENTO') {
+            viewSetter('investments');
+          } else if (transaction.type === 'ENTRATA' || transaction.type === 'AUMENTO_REDDITO') {
+            viewSetter('dashboard');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error processing input:', error);
+      
+      setMessages(prev => [...prev, {
+        sender: 'assistant',
+        text: 'Mi dispiace, non sono riuscito a elaborare la richiesta. Puoi riprovare?',
+        timestamp: new Date()
+      }]);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+  
+  // Genera un messaggio di conferma in base al tipo di transazione
+  const getConfirmationMessage = (transaction: any): string => {
+    const amount = Math.abs(transaction.amount);
+    const formattedAmount = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(amount);
+    
+    switch (transaction.type) {
+      case 'ENTRATA':
+        return `Ho registrato un'entrata di ${formattedAmount} ${transaction.category ? `per ${transaction.category}` : ''}.`;
+      case 'USCITA':
+        return `Ho registrato una spesa di ${formattedAmount} ${transaction.category ? `per ${transaction.category}` : ''}.`;
+      case 'INVESTIMENTO':
+        return `Ho registrato un investimento di ${formattedAmount} ${transaction.category ? `in ${transaction.category}` : ''}.`;
+      case 'AUMENTO_REDDITO':
+        return `Ho registrato un aumento di reddito di ${formattedAmount}.`;
+      default:
+        return `Transazione di ${formattedAmount} registrata con successo.`;
+    }
+  };
+  
+  // Gestione del feedback sulla categoria
+  const handleFeedbackSubmit = async (selectedCategory: string) => {
+    if (!currentTransaction) return;
+    
+    try {
+      // Aggiorna la transazione con la categoria corretta
+      const updatedTransaction = {
+        ...currentTransaction,
+        category: selectedCategory,
+        confidence: 1.0
+      };
+      
+      // Processo il feedback per migliorare le future classificazioni
+      await transactionStore.processFeedback(
+        0, // Utilizziamo 0 come ID temporaneo
+        selectedCategory,
+        userId || 'demo-user'
+      );
+      
+      // Salva la transazione aggiornata
+      const savedTransaction = await saveTransaction(updatedTransaction);
+      
+      if (savedTransaction) {
+        setMessages(prev => [...prev, {
+          sender: 'assistant',
+          text: `Ho aggiornato la categoria a "${selectedCategory}" e registrato la transazione.`,
+          timestamp: new Date()
+        }]);
+        
+        // Update UI
+        updateUIBasedOnTransaction(updatedTransaction);
+        
+        // Automatic view switching based on transaction type
+        if (updatedTransaction.type === 'USCITA') {
+          viewSetter('expenses');
+        } else if (updatedTransaction.type === 'INVESTIMENTO') {
+          viewSetter('investments');
+        } else {
+          viewSetter('dashboard');
         }
       }
       
-      updateUIBasedOnTransaction(transaction);
-      setTransactionCompleted(true);
-      
-      setTimeout(() => {
-        setIsExpanded(false);
-      }, 1500);
-    };
-    
-    const unsubscribe = transactionStore.subscribe('ALL', handleTransaction);
-    
-    return () => unsubscribe();
-  }, [
-    handleAddDeposit, 
-    handleExpenseSubmit, 
-    handleIncomeIncrease, 
-    resetDepositForm, 
-    resetExpenseForm, 
-    setDepositAmount, 
-    setDepositCategory, 
-    setDepositDate, 
-    setDepositDescription, 
-    setExpenseBaseline, 
-    setExpenseCategory, 
-    setExpenseDate, 
-    setExpenseSpent, 
-    setIncomeDate, 
-    setNewIncomeValue,
-    transactionHistory.length,
-    user
-  ]);
-
-  const updateUIBasedOnTransaction = (transaction: any) => {
-    switch(transaction.type) {
-      case 'USCITA':
-        setExpenseCategory(transaction.category || 'Altro');
-        setExpenseSpent(transaction.amount.toString());
-        setExpenseBaseline((transaction.metadata?.baselineAmount || transaction.amount).toString());
-        setExpenseDate(transaction.date);
-        handleExpenseSubmit();
-        resetExpenseForm();
-        break;
-        
-      case 'INVESTIMENTO':
-        setDepositAmount(transaction.amount.toString());
-        setDepositCategory(transaction.category || '');
-        setDepositDescription(transaction.description || '');
-        setDepositDate(transaction.date);
-        handleAddDeposit();
-        resetDepositForm();
-        break;
-        
-      case 'AUMENTO_REDDITO':
-        setNewIncomeValue(transaction.amount.toString());
-        setIncomeDate(transaction.date);
-        handleIncomeIncrease();
-        break;
-        
-      case 'ENTRATA':
-        setNewIncomeValue(transaction.amount.toString());
-        setIncomeDate(transaction.date);
-        handleIncomeIncrease();
-        break;
-        
-      default:
-        console.log('Unhandled transaction type:', transaction.type);
-    }
-  };
-
-  const handleCategorySelection = async (categoryId: string) => {
-    if (!currentTransaction || lastTransactionId === null || !user?.id) return;
-    
-    try {
-      const result = await transactionStore.processFeedback(
-        lastTransactionId,
-        categoryId,
-        user.id
-      );
-      
-      if (result.success && result.updatedTransaction) {
-        updateUIBasedOnTransaction(result.updatedTransaction);
-        showToast(`Categoria aggiornata a: ${categoryId}`);
-      } else {
-        showToast("Non è stato possibile aggiornare la categoria", "destructive");
-      }
-    } catch (error) {
-      console.error('Error processing category feedback:', error);
-      showToast("Errore nell'aggiornamento della categoria", "destructive");
-    } finally {
       setFeedbackNeeded(false);
       setCurrentTransaction(null);
       setSuggestedCategories([]);
+      
       setTimeout(() => {
         setIsExpanded(false);
       }, 1000);
+      
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      
+      setMessages(prev => [...prev, {
+        sender: 'assistant',
+        text: 'Mi dispiace, si è verificato un errore. La transazione è stata comunque registrata con la categoria selezionata.',
+        timestamp: new Date()
+      }]);
+      
+      setFeedbackNeeded(false);
     }
   };
-
-  const handleDismissFeedback = () => {
-    if (currentTransaction) {
-      updateUIBasedOnTransaction(currentTransaction);
+  
+  // Ignora il feedback e usa la categoria originale
+  const handleFeedbackCancel = async () => {
+    if (!currentTransaction) return;
+    
+    try {
+      // Salva la transazione con la categoria originale
+      const savedTransaction = await saveTransaction(currentTransaction);
+      
+      if (savedTransaction) {
+        setMessages(prev => [...prev, {
+          sender: 'assistant',
+          text: getConfirmationMessage(currentTransaction),
+          timestamp: new Date()
+        }]);
+        
+        // Update UI
+        updateUIBasedOnTransaction(currentTransaction);
+      }
+    } catch (error) {
+      console.error('Error saving transaction after canceling feedback:', error);
     }
     
     setFeedbackNeeded(false);
@@ -194,149 +282,18 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
       setIsExpanded(false);
     }, 500);
   };
-
-  const handleAnalyze = async (inputText: string): Promise<void> => {
-    if (!inputText.trim() || !transactionRouterRef.current) {
-      return Promise.reject(new Error("Empty input or router not initialized"));
-    }
-    
-    setProcessing(true);
-    setTransactionCompleted(false);
-    
-    const lowerText = inputText.toLowerCase();
-    
-    if (lowerText.includes('dashboard') || lowerText.includes('panoramica') || lowerText.includes('home')) {
-      viewSetter('dashboard');
-      showToast('Dashboard aperta');
-      setProcessing(false);
-      return Promise.resolve();
-    } else if (lowerText.includes('investiment') || lowerText.includes('deposit')) {
-      viewSetter('investments');
-      showToast('Sezione investimenti aperta');
-      setProcessing(false);
-      return Promise.resolve();
-    } else if (lowerText.includes('spes') || lowerText.includes('budget') || lowerText.includes('cost')) {
-      viewSetter('expenses');
-      showToast('Sezione spese aperta');
-      setProcessing(false);
-      return Promise.resolve();
-    } else if (lowerText.includes('proiezion') || lowerText.includes('previs') || lowerText.includes('futur')) {
-      viewSetter('projections');
-      showToast('Sezione proiezioni aperta');
-      setProcessing(false);
-      return Promise.resolve();
-    }
-    
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        try {
-          const analysisResult = enhancedNlpProcessor.analyzeText(inputText);
-          console.log('NLP Analysis result:', analysisResult);
-          
-          const transaction = convertAnalysisToTransaction(analysisResult);
-          console.log('Converted transaction:', transaction);
-          
-          if (transactionRouterRef.current) {
-            const routedTransaction = transactionRouterRef.current.route(transaction);
-            console.log('Routed transaction:', routedTransaction);
-            
-            showTransactionToast(routedTransaction);
-          }
-          
-          setProcessing(false);
-          resolve();
-        } catch (error) {
-          console.error('Error analyzing text:', error);
-          setProcessing(false);
-          showToast("Non riuscito a interpretare il testo", "destructive");
-          reject(error);
-        }
-      }, 300);
-    });
-  };
-
-  const handleFormSubmit = async (formData: any): Promise<void> => {
-    console.log('Form data received:', formData);
-    
-    if (!user?.id || !formData.amount || !formData.category) {
-      return Promise.reject(new Error("Missing required fields or user not authenticated"));
-    }
-    
-    const transaction: Transaction = {
-      type: formData.type === 'expense' ? 'USCITA' : 
-            formData.type === 'investment' ? 'INVESTIMENTO' : 'ENTRATA' as TransactionType,
-      amount: parseFloat(formData.amount),
-      description: formData.description || formData.category,
-      category: formData.category,
-      date: formData.date || new Date().toISOString().split('T')[0],
-      metadata: {
-        baselineAmount: parseFloat(formData.amount),
-        rawInput: `${formData.amount} ${formData.description} (${formData.category})`,
-        processingTime: new Date()
-      }
-    };
-    
-    console.log('Constructed transaction from form:', transaction);
-    setTransactionCompleted(false);
-    
-    return new Promise((resolve, reject) => {
-      try {
-        if (transactionRouterRef.current) {
-          const routedTransaction = transactionRouterRef.current.route(transaction);
-          console.log('Routed transaction from form:', routedTransaction);
-          
-          showTransactionToast(routedTransaction);
-          resolve();
-        } else {
-          reject(new Error("Transaction router not initialized"));
-        }
-      } catch (error) {
-        console.error('Error processing form submission:', error);
-        reject(error);
-      }
-    });
-  };
-
+  
+  // Toggle expansion state
   const toggleExpanded = () => {
-    setIsExpanded(prev => !prev);
+    setIsExpanded(!isExpanded);
   };
-
-  const showToast = (message: string, variant: 'default' | 'destructive' = 'default') => {
-    toast({
-      title: variant === 'destructive' ? "Errore" : "Cash Talk",
-      description: message,
-      variant: variant,
-      duration: 3000,
-    });
-  };
-
-  const showTransactionToast = (transaction: any) => {
-    const { type, amount, category } = transaction;
-    
-    switch(type) {
-      case 'USCITA':
-        showToast(`Spesa: ${amount}€ (${category || 'Altro'})`);
-        break;
-      case 'INVESTIMENTO':
-        showToast(`Investimento: ${amount}€ (${category || 'Generico'})`);
-        break;
-      case 'AUMENTO_REDDITO':
-        showToast(`Reddito aggiornato a ${amount}€`);
-        break;
-      case 'ENTRATA':
-        showToast(`Entrata: ${amount}€ (${category || 'Generico'})`);
-        break;
-      default:
-        showToast(`Transazione registrata: ${amount}€`);
-    }
-  };
-
+  
+  // UI Component
   return (
-    <>
-      <AnimatePresence mode="wait">
+    <div className="relative">
+      <AnimatePresence>
         {isExpanded ? (
           <motion.div
-            key="expanded"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
@@ -345,47 +302,65 @@ export default function ConversationalInterface({ viewSetter }: ConversationalIn
           >
             <ResponsiveCashTalk 
               onSubmit={handleAnalyze}
-              onFormSubmit={handleFormSubmit}
-              isProcessing={processing}
-              categories={mainCategories}
-              lastTransaction={lastTransaction}
+              messages={messages}
+              inputValue={input}
+              setInputValue={setInput}
+              isLoading={isAnalyzing || isLoading}
               transactionCompleted={transactionCompleted}
             />
             
             <motion.button
               className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition-colors z-20"
               onClick={toggleExpanded}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              aria-label="Minimizza Cash Talk"
             >
-              <X size={16} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </motion.button>
           </motion.div>
         ) : (
-          <motion.button
-            key="collapsed"
+          <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.3 }}
-            onClick={toggleExpanded}
-            className="fixed bottom-6 right-6 flex items-center justify-center w-12 h-12 rounded-full bg-[#06D6A0] text-white shadow-md hover:shadow-lg hover:bg-[#05c090] transition-all z-50"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="sticky bottom-8 right-8 z-50 md:absolute"
           >
-            <MessageCircle size={20} />
-          </motion.button>
+            <button
+              onClick={toggleExpanded}
+              className="flex items-center gap-2 bg-white text-blue-600 p-3 rounded-full shadow-lg hover:bg-blue-50 transition-colors"
+              aria-label="Apri Cash Talk"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span className="font-medium hidden md:inline">Cash Talk</span>
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
       
-      {feedbackNeeded && currentTransaction && (
-        <ElegantFeedbackUI
-          transaction={currentTransaction}
-          suggestedCategories={suggestedCategories}
-          onSelectCategory={handleCategorySelection}
-          onDismiss={handleDismissFeedback}
-        />
+      {/* Feedback UI */}
+      <AnimatePresence>
+        {feedbackNeeded && currentTransaction && (
+          <ElegantFeedbackUI
+            transaction={currentTransaction}
+            suggestedCategories={suggestedCategories}
+            onSubmit={handleFeedbackSubmit}
+            onCancel={handleFeedbackCancel}
+          />
+        )}
+      </AnimatePresence>
+      
+      {/* Network status indicator */}
+      {!isOnline && (
+        <div className="fixed bottom-0 left-0 right-0 bg-yellow-100 text-yellow-800 text-center text-sm py-1">
+          Modalità offline - Le transazioni verranno sincronizzate quando tornerai online
+        </div>
       )}
-    </>
+    </div>
   );
-}
+};
+
+export default ConversationalInterface;
