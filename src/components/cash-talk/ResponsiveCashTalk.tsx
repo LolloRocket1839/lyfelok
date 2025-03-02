@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, MessageSquare, X, HelpCircle, Loader2, Plus, MinusCircle } from 'lucide-react';
+import { ArrowUp, MessageSquare, X, HelpCircle, Loader2, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { mainCategories } from '@/utils/transactionStore';
@@ -50,7 +50,7 @@ const ResponsiveCashTalk = ({
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [showFormMode, setShowFormMode] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [minimized, setMinimized] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   
   // Form state
   const [formData, setFormData] = useState<TransactionFormData>({
@@ -225,8 +225,13 @@ const ResponsiveCashTalk = ({
     if (onClose) {
       onClose();
     } else {
-      setMinimized(true);
+      setExpanded(false);
     }
+  };
+
+  // Toggle expanded state
+  const toggleExpanded = () => {
+    setExpanded(!expanded);
   };
 
   // Generate emoji category buttons
@@ -241,6 +246,8 @@ const ResponsiveCashTalk = ({
       { emoji: "⚕️", category: ExpenseCategories.Health },
       { emoji: "📚", category: ExpenseCategories.Education },
       { emoji: "✈️", category: ExpenseCategories.Travel },
+      { emoji: "📈", category: ExpenseCategories.Investment },
+      { emoji: "💰", category: ExpenseCategories.Income },
     ];
 
     return (
@@ -266,21 +273,25 @@ const ResponsiveCashTalk = ({
     );
   };
 
-  if (minimized) {
+  // Se è chiuso, mostra solo una barra minima (non un'icona)
+  if (!expanded) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="fixed bottom-6 right-6 z-10"
+        className="fixed bottom-6 left-0 right-0 mx-auto w-[90%] max-w-[980px] z-10"
       >
-        <button
-          onClick={() => setMinimized(false)}
-          className="bg-[#06D6A0] text-white p-3 rounded-full shadow-md hover:bg-[#05c090] transition-colors flex items-center justify-center"
-          aria-label="Open Cash Talk"
+        <div 
+          onClick={toggleExpanded}
+          className="flex items-center justify-between px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
         >
-          <MessageSquare size={24} />
-        </button>
+          <div className="flex items-center px-2 text-sm text-gray-500">
+            <MessageSquare size={16} className="mr-1 text-green-400" />
+            <span className="text-xs font-medium">Cash Talk</span>
+          </div>
+          <div className="text-xs text-gray-400">Clicca per espandere</div>
+        </div>
       </motion.div>
     );
   }
@@ -300,11 +311,13 @@ const ResponsiveCashTalk = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setMinimized(true)}
+              onClick={toggleExpanded}
               className="flex items-center justify-center h-8 w-8 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-full transition-colors"
               aria-label="Minimize"
             >
-              <MinusCircle size={16} />
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
             </button>
             <button
               onClick={handleClose}

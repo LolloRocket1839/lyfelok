@@ -37,8 +37,13 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
       onSelectCategory(categoryId);
       
       // If user is logged in, update mapping in Supabase
-      if (user) {
+      if (user && transaction?.description) {
         await updateCategoryMapping(transaction.description, categoryId, user.id);
+      } else {
+        console.log("Skipping mapping update - missing user or transaction data:", {
+          user: !!user,
+          description: transaction?.description
+        });
       }
       
       setVisible(false);
@@ -76,6 +81,11 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
   
   // Extract keywords from description
   const extractKeywords = (text: string): string[] => {
+    if (!text || typeof text !== 'string') {
+      console.warn("Invalid text for keyword extraction:", text);
+      return [];
+    }
+    
     // Remove stopwords, tokenize and filter
     const stopwords = ['di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra', 'il', 'lo', 'la', 'i', 'gli', 'le'];
     return text
@@ -86,6 +96,9 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
   
   // Don't render if not visible
   if (!visible) return null;
+  
+  // Display transaction description or a fallback
+  const displayDescription = transaction?.description || "transazione";
   
   // Categories to display
   const displayCategories = expanded ? 
@@ -103,7 +116,7 @@ const ElegantFeedbackUI = ({ transaction, suggestedCategories, onSelectCategory,
       <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden">
         <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
           <p className="m-0 text-sm font-medium text-gray-800">
-            Categoria per "{transaction.description}"?
+            Categoria per "{displayDescription}"?
           </p>
           <button 
             className="bg-transparent border-none text-gray-400 text-lg p-1"
