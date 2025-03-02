@@ -1,405 +1,322 @@
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowUp, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
+import { 
+  X, 
+  Check, 
+  MessageCircle, 
+  PenLine, 
+  AlertTriangle,
+  Trash,
+  Edit,
+  ArrowRight,
+  FileCheck,
+  Calculator
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
 import { useToast } from '@/components/ui/use-toast';
-import { toast } from '@/hooks/use-toast';
-import { useLifestyleLock } from '@/hooks/useLifestyleLock';
-import { useAuth } from '@/contexts/AuthContext';
+import { 
+  NlpAnalysisResult, 
+  intent, 
+  confidence, 
+  Transaction 
+} from '@/utils/transactionRouter';
+
 import TransactionInterpretation from './TransactionInterpretation';
-import nlpProcessor, { NlpAnalysisResult } from '@/utils/adaptiveNlpProcessor';
 
 interface EnhancedCashTalkDialogProps {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
+  open: boolean;
+  onClose: () => void;
+  onConfirm?: (data: Transaction) => void;
+  analysis?: NlpAnalysisResult;
+  initialMessage?: string;
 }
 
-export default function EnhancedCashTalkDialog({ isOpen, setIsOpen }: EnhancedCashTalkDialogProps) {
-  const { user } = useAuth();
+const EnhancedCashTalkDialog: React.FC<EnhancedCashTalkDialogProps> = ({
+  open,
+  onClose,
+  onConfirm,
+  analysis,
+  initialMessage = '',
+}) => {
   const { toast } = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [inputText, setInputText] = useState('');
-  const [analysis, setAnalysis] = useState<NlpAnalysisResult | null>(null);
-  const [processing, setProcessing] = useState(false);
-  const [feedbackMode, setFeedbackMode] = useState(false);
-  const [pendingFeedbackWords, setPendingFeedbackWords] = useState<any[]>([]);
+  const [message, setMessage] = useState(initialMessage);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   
-  const {
-    handleExpenseSubmit,
-    handleAddDeposit,
-    handleIncomeIncrease,
-    setExpenseCategory,
-    setExpenseSpent,
-    setExpenseBaseline,
-    setDepositAmount,
-    setDepositCategory,
-    setDepositDescription,
-    setNewIncomeValue,
-    setActiveModal,
-    resetExpenseForm,
-    resetDepositForm,
-  } = useLifestyleLock();
-
-  // Inizializza il processore NLP quando l'utente è disponibile
+  // Reset state when dialog opens
   useEffect(() => {
-    if (user?.id) {
-      nlpProcessor.setUserId(user.id);
-      nlpProcessor.initialize();
+    if (open) {
+      setMessage(initialMessage);
+      setShowConfirmation(false);
+      setIsEditing(false);
     }
-  }, [user]);
-
-  // Focus automatico sull'input quando il dialog appare
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 300);
+  }, [open, initialMessage]);
+  
+  // Create a simulated transaction from analysis
+  const createTransactionFromAnalysis = (): Transaction => {
+    if (!analysis) return {
+      type: 'USCITA',
+      amount: 0,
+      date: new Date().toISOString(),
+      description: 'Unknown transaction',
+    };
+    
+    // Extract data from the analysis
+    const intent = analysis.intent || 'expense';
+    const amount = analysis.entities.find(e => e.type === 'amount')?.value || 0;
+    const date = analysis.entities.find(e => e.type === 'date')?.value || new Date().toISOString();
+    let description = analysis.entities.find(e => e.type === 'merchant')?.text || '';
+    
+    if (!description) {
+      const category = analysis.entities.find(e => e.type === 'category')?.text;
+      const item = analysis.entities.find(e => e.type === 'item')?.text;
+      description = [category, item].filter(Boolean).join(' - ') || 'Unknown';
     }
     
-    // Carica le parole in attesa di feedback
-    if (isOpen) {
-      const pendingWords = nlpProcessor.getPendingFeedbackWords();
-      setPendingFeedbackWords(pendingWords);
-    }
-  }, [isOpen]);
+    return {
+      type: intent === 'income' ? 'ENTRATA' : 'USCITA',
+      amount: typeof amount === 'number' ? amount : parseFloat(amount),
+      date: typeof date === 'string' ? date : date.toISOString(),
+      description,
+      category: analysis.entities.find(e => e.type === 'category')?.text,
+      metadata: {
+        confidence: analysis.confidence || 'medium',
+        originalText: analysis.text,
+      }
+    };
+  };
 
-  const handleAnalyze = () => {
-    if (!inputText.trim()) return;
-
-    setProcessing(true);
-    setAnalysis(null);
+  // Handle confirmation
+  const handleConfirm = () => {
+    if (!analysis) return;
     
-    // Simula un breve ritardo per dare la sensazione di elaborazione
-    setTimeout(() => {
-      try {
-        // Usa il processore NLP avanzato
-        const result = nlpProcessor.analyzeText(inputText);
-        setAnalysis(result);
-        setProcessing(false);
-        
-        // Controlla se ci sono parole che necessitano di feedback
-        if (result.needsFeedback) {
-          const pendingWords = nlpProcessor.getPendingFeedbackWords();
-          setPendingFeedbackWords(pendingWords);
-        }
-      } catch (error) {
-        console.error('Errore durante l\'analisi del testo:', error);
-        setProcessing(false);
-        toast({
-          title: "Errore di elaborazione",
-          description: "Non è stato possibile analizzare il testo. Riprova con una frase diversa.",
-          variant: "destructive",
-        });
-      }
-    }, 800); // Delay leggermente più lungo per simulare l'elaborazione avanzata
-  };
-
-  const handleConfirmTransaction = () => {
-    if (!analysis) return;
-
-    try {
-      const { type, amount, category, baselineAmount } = analysis;
-
-      // In base al tipo di transazione, utilizziamo le funzioni appropriate
-      if (type === 'spesa') {
-        setExpenseCategory(category);
-        setExpenseSpent(amount.toString());
-        setExpenseBaseline(baselineAmount.toString());
-        handleExpenseSubmit();
-        resetExpenseForm();
-      } else if (type === 'investimento') {
-        setDepositAmount(amount.toString());
-        setDepositCategory(category);
-        setDepositDescription(inputText);
-        handleAddDeposit();
-        resetDepositForm();
-      } else if (type === 'entrata') {
-        if (category === 'Stipendio') {
-          setNewIncomeValue(amount.toString());
-          handleIncomeIncrease();
-        } else {
-          // Per altri tipi di entrate, potremmo aggiungere una logica specifica in futuro
-          toast({
-            title: "Entrata registrata",
-            description: `${category}: €${amount}`,
-          });
-        }
-      }
-
-      toast({
-        title: "Transazione confermata",
-        description: "La tua transazione è stata registrata con successo.",
-      });
-
-      // Reset dello stato e chiusura del dialog
-      setInputText('');
-      setAnalysis(null);
-      setIsOpen(false);
-    } catch (error) {
-      console.error('Errore durante la conferma della transazione:', error);
-      toast({
-        title: "Errore",
-        description: "Si è verificato un errore durante la registrazione della transazione.",
-        variant: "destructive",
-      });
+    const transaction = createTransactionFromAnalysis();
+    
+    // Call the onConfirm callback with the transaction data
+    if (onConfirm) {
+      onConfirm(transaction);
     }
-  };
-
-  const handleManualEdit = () => {
-    if (!analysis) return;
-
-    const { type, amount, category } = analysis;
-
-    // Apri il modal appropriato in base al tipo di transazione
-    if (type === 'spesa') {
-      setExpenseCategory(category);
-      setExpenseSpent(amount.toString());
-      setActiveModal('expense');
-    } else if (type === 'investimento') {
-      setDepositAmount(amount.toString());
-      setDepositCategory(category);
-      setDepositDescription(inputText);
-      setActiveModal('deposit');
-    } else if (type === 'entrata') {
-      setNewIncomeValue(amount.toString());
-      setActiveModal('income');
-    }
-
-    // Chiudi il dialog
-    setIsOpen(false);
-  };
-
-  const handleInputKeydown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleAnalyze();
-    }
-  };
-
-  // Gestisce feedback positivo per una parola
-  const handlePositiveFeedback = (word: string, category: string) => {
-    nlpProcessor.processFeedback(word, category, true);
+    
+    // Show confirmation toast
     toast({
-      title: "Grazie per il feedback!",
-      description: `Hai confermato che "${word}" appartiene alla categoria "${category}".`,
+      title: "Transaction saved",
+      description: `${transaction.type === 'ENTRATA' ? 'Income' : 'Expense'} of €${transaction.amount} recorded.`,
     });
     
-    // Aggiorna la lista di parole pending
-    const updatedPendingWords = pendingFeedbackWords.filter(item => item.word !== word);
-    setPendingFeedbackWords(updatedPendingWords);
+    // Close the dialog
+    onClose();
   };
-
-  // Gestisce feedback negativo per una parola
-  const handleNegativeFeedback = (word: string, suggestedCategory: string, correctCategory: string) => {
-    nlpProcessor.processFeedback(word, suggestedCategory, false, correctCategory);
-    toast({
-      title: "Grazie per il feedback!",
-      description: `Hai corretto la categoria per "${word}" da "${suggestedCategory}" a "${correctCategory}".`,
-    });
-    
-    // Aggiorna la lista di parole pending
-    const updatedPendingWords = pendingFeedbackWords.filter(item => item.word !== word);
-    setPendingFeedbackWords(updatedPendingWords);
+  
+  // Handle message edit
+  const handleEditMessage = () => {
+    setIsEditing(true);
+    setShowConfirmation(false);
   };
-
-  const suggestions = [
-    "Ho speso 25€ per una cena",
-    "Ricevuto stipendio di 1500€",
-    "Investito 500€ in ETF"
-  ];
-
-  const handleSuggestionClick = (suggestion: string) => {
-    setInputText(suggestion);
-  };
-
-  // Cambia tra modalità input e feedback
-  const toggleFeedbackMode = () => {
-    setFeedbackMode(!feedbackMode);
-    // Aggiorna la lista di parole pending quando si entra in modalità feedback
-    if (!feedbackMode) {
-      const pendingWords = nlpProcessor.getPendingFeedbackWords();
-      setPendingFeedbackWords(pendingWords);
+  
+  // Format confidence level
+  const getConfidenceDisplay = (confidenceLevel?: confidence) => {
+    switch (confidenceLevel) {
+      case 'high':
+        return { label: 'High confidence', color: 'bg-green-100 text-green-800' };
+      case 'medium':
+        return { label: 'Medium confidence', color: 'bg-amber-100 text-amber-800' };
+      case 'low':
+        return { label: 'Low confidence', color: 'bg-red-100 text-red-800' };
+      default:
+        return { label: 'Unknown confidence', color: 'bg-gray-100 text-gray-800' };
     }
   };
+  
+  // If not open, render nothing
+  if (!open) return null;
+  
+  // Create a transaction from the analysis for the TransactionInterpretation component
+  const transactionForInterpretation = analysis ? createTransactionFromAnalysis() : null;
 
   return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      {/* Overlay di sfondo */}
-      <motion.div 
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm" 
-        onClick={() => setIsOpen(false)}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      />
-      
-      {/* Finestra di dialogo */}
-      <motion.div
-        className="relative bg-white w-full max-w-2xl max-h-[80vh] overflow-auto rounded-t-xl sm:rounded-xl shadow-xl"
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold text-slate-800">Cash Talk</h2>
-            {pendingFeedbackWords.length > 0 && (
-              <button
-                onClick={toggleFeedbackMode}
-                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  feedbackMode 
-                    ? 'bg-emerald-100 text-emerald-700' 
-                    : 'bg-blue-100 text-blue-700'
-                }`}
-              >
-                {feedbackMode ? 'Torna all\'input' : `Feedback (${pendingFeedbackWords.length})`}
-              </button>
-            )}
-          </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="rounded-full p-1 hover:bg-slate-100 transition-colors"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <motion.div 
+            className="w-full max-w-md bg-white rounded-lg shadow-xl overflow-hidden mx-4"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={e => e.stopPropagation()}
           >
-            <X size={20} />
-          </button>
-        </div>
-        
-        {/* Contenuto */}
-        <div className="p-4">
-          {!feedbackMode ? (
-            // Modalità Input
-            <>
-              {/* Messaggio di benvenuto */}
-              {!analysis && (
-                <div className="mb-4 p-3 bg-slate-50 rounded-lg text-slate-700 text-sm">
-                  <p>Scrivi naturalmente cosa hai fatto. Ad esempio:</p>
-                  <p className="mt-1 font-medium">"Ho speso 25€ per una cena" oppure "Ho ricevuto lo stipendio di 1.500€"</p>
-                </div>
-              )}
-              
-              {/* Input e bottone */}
-              <div className="flex items-center gap-2 mb-4">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={handleInputKeydown}
-                  placeholder="Scrivi una transazione..."
-                  className="flex-1 px-4 py-3 bg-slate-100 rounded-lg border-0 focus:ring-2 focus:ring-emerald-500 text-slate-900"
-                  disabled={processing}
-                />
-                <button
-                  onClick={handleAnalyze}
-                  disabled={!inputText.trim() || processing}
-                  className={`p-3 rounded-lg bg-emerald-500 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-600 transition-colors`}
-                >
-                  <ArrowUp size={20} />
-                </button>
+            {/* Dialog Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center">
+                <Avatar className="h-8 w-8 mr-2 bg-green-100">
+                  <MessageCircle className="h-4 w-4 text-green-600" />
+                </Avatar>
+                <h2 className="text-lg font-medium">Cash Talk</h2>
               </div>
-              
-              {/* Suggerimenti */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {suggestions.map((suggestion, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 rounded-full text-slate-800 transition-colors"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-              
-              {/* Interpretazione */}
-              {analysis && (
-                <TransactionInterpretation 
-                  analysis={analysis} 
-                  onConfirm={handleConfirmTransaction}
-                  onEdit={handleManualEdit}
-                />
-              )}
-              
-              {/* Indicatore di elaborazione */}
-              {processing && (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin h-8 w-8 border-4 border-emerald-500 rounded-full border-t-transparent"></div>
-                </div>
-              )}
-            </>
-          ) : (
-            // Modalità Feedback
-            <>
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg text-blue-700 text-sm">
-                <p className="font-medium">Aiutaci a migliorare Cash Talk</p>
-                <p className="mt-1">Il tuo feedback ci aiuterà a capire meglio il linguaggio finanziario.</p>
-              </div>
-              
-              {pendingFeedbackWords.length > 0 ? (
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Dialog Content */}
+            <div className="p-4 max-h-[70vh] overflow-y-auto">
+              {isEditing ? (
+                // Edit Message View
                 <div className="space-y-4">
-                  {pendingFeedbackWords.map((item, index) => (
-                    <div key={index} className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
-                      <p className="font-medium text-slate-800 mb-2">
-                        La parola <span className="text-emerald-600">"{item.word}"</span> è della categoria <span className="text-blue-600">"{item.guessedCategory}"</span>?
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handlePositiveFeedback(item.word, item.guessedCategory)}
-                          className="flex items-center gap-1 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
-                        >
-                          <ThumbsUp size={16} /> Sì, corretto
-                        </button>
-                        <select
-                          className="flex-1 px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg"
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              handleNegativeFeedback(item.word, item.guessedCategory, e.target.value);
-                            }
-                          }}
-                          defaultValue=""
-                        >
-                          <option value="" disabled>No, è un'altra categoria...</option>
-                          <option value="Cibo">Cibo</option>
-                          <option value="Alloggio">Alloggio</option>
-                          <option value="Trasporto">Trasporto</option>
-                          <option value="Salute">Salute</option>
-                          <option value="Intrattenimento">Intrattenimento</option>
-                          <option value="Shopping">Shopping</option>
-                          <option value="Tecnologia">Tecnologia</option>
-                          <option value="Fitness">Fitness</option>
-                          <option value="Stipendio">Stipendio</option>
-                          <option value="Bonus">Bonus</option>
-                          <option value="Dividendi">Dividendi</option>
-                          <option value="Entrata">Altra entrata</option>
-                          <option value="ETF">ETF</option>
-                          <option value="Azioni">Azioni</option>
-                          <option value="Obbligazioni">Obbligazioni</option>
-                          <option value="Crypto">Crypto</option>
-                          <option value="Immobiliare">Immobiliare</option>
-                          <option value="Fondi">Fondi</option>
-                          <option value="Altro">Altro</option>
-                        </select>
+                  <p className="text-sm text-gray-500">Edit your message:</p>
+                  <div className="border rounded-lg overflow-hidden">
+                    <textarea
+                      className="w-full p-3 text-gray-900 focus:outline-none"
+                      rows={3}
+                      value={message}
+                      onChange={e => setMessage(e.target.value)}
+                      placeholder="Describe your transaction..."
+                    />
+                    <div className="flex justify-end p-2 bg-gray-50">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mr-2"
+                        onClick={() => setIsEditing(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={() => {
+                          // Here would typically be code to reprocess the message
+                          setIsEditing(false);
+                          // Simulate analysis update
+                          toast({
+                            title: "Message updated",
+                            description: "Your transaction has been reanalyzed.",
+                          });
+                        }}
+                      >
+                        Update
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : showConfirmation ? (
+                // Confirmation View
+                <div className="space-y-4">
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                    <div className="flex items-center">
+                      <div className="bg-green-100 p-2 rounded-full mr-3">
+                        <FileCheck className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-green-900">Ready to save</h3>
+                        <p className="text-sm text-green-700">This transaction will be added to your records.</p>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                  
+                  {transactionForInterpretation && (
+                    <TransactionInterpretation 
+                      transaction={transactionForInterpretation} 
+                    />
+                  )}
+                  
+                  <div className="flex justify-end space-x-2 mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowConfirmation(false)}
+                    >
+                      Back
+                    </Button>
+                    <Button 
+                      onClick={handleConfirm}
+                    >
+                      Confirm & Save
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-slate-600">
-                  <MessageSquare className="mx-auto mb-3 text-slate-400" size={40} />
-                  <p>Non ci sono feedback in attesa al momento.</p>
+                // Analysis View
+                <div className="space-y-4">
+                  {/* User message */}
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0 mr-3">
+                      <div className="bg-blue-100 rounded-full p-2">
+                        <PenLine className="h-4 w-4 text-blue-600" />
+                      </div>
+                    </div>
+                    <div className="bg-blue-50 rounded-lg p-3 flex-1 relative">
+                      <p className="text-sm text-blue-900">{message || "No message provided"}</p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-6 w-6 opacity-60 hover:opacity-100"
+                        onClick={handleEditMessage}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Analysis result */}
+                  {analysis ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-gray-700">Analysis Result</h3>
+                        <span 
+                          className={`text-xs px-2 py-1 rounded-full ${getConfidenceDisplay(analysis.confidence).color}`}
+                        >
+                          {getConfidenceDisplay(analysis.confidence).label}
+                        </span>
+                      </div>
+                      
+                      {transactionForInterpretation && (
+                        <TransactionInterpretation
+                          transaction={transactionForInterpretation}
+                        />
+                      )}
+                      
+                      <div className="flex justify-end space-x-2 mt-4">
+                        <Button 
+                          variant="outline" 
+                          onClick={handleEditMessage}
+                        >
+                          Edit Message
+                        </Button>
+                        <Button 
+                          onClick={() => setShowConfirmation(true)}
+                        >
+                          Continue
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 mr-3">
+                        <div className="bg-amber-100 rounded-full p-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        </div>
+                      </div>
+                      <div className="bg-amber-50 rounded-lg p-3 flex-1">
+                        <p className="text-sm text-amber-900">
+                          Sorry, I couldn't understand your message. Please try to be more specific about the transaction.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-            </>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
-}
+};
+
+export default EnhancedCashTalkDialog;

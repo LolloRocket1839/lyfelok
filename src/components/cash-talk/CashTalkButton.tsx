@@ -1,117 +1,53 @@
 
-import { useState, useEffect } from 'react';
-import { Coins, DollarSign } from 'lucide-react';
-import { motion, AnimatePresence, useMotionValue, PanInfo } from 'framer-motion';
+import React, { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { MessageCircle } from "lucide-react";
 import CashTalkDialog from './CashTalkDialog';
+import { Transaction } from '@/utils/transactionRouter';
 
-export default function CashTalkButton() {
+/**
+ * A button component that opens a cash talk dialog
+ * when clicked. The dialog displays information about
+ * a transaction.
+ */
+const CashTalkButton = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  
-  // Motion values per la posizione di trascinamento
-  const dragX = useMotionValue(0);
-  const dragY = useMotionValue(0);
 
-  // Funzione per generare una nuova posizione casuale ma limitata alla parte centrale dello schermo
-  const generateRandomPosition = () => {
-    // Genera valori tra -100 e 100 per mantenere il bottone nella parte centrale
-    const x = Math.floor(Math.random() * 150) - 75; // tra -75 e 75
-    const y = Math.floor(Math.random() * 80) - 40; // tra -40 e 40
-    
-    return { x, y };
-  };
-
-  // Cambia la posizione ogni minuto, ma solo se non è in trascinamento
-  useEffect(() => {
-    // Imposta una posizione iniziale
-    if (!isDragging) {
-      setPosition(generateRandomPosition());
+  // Sample transaction for demonstration purposes
+  const sampleTransaction: Transaction = {
+    type: 'USCITA',
+    amount: 42.50,
+    description: 'Supermercato',
+    date: new Date().toISOString(),
+    category: 'Alimentari',
+    metadata: {
+      source: 'receipt_image',
+      rawText: 'Supermercato Esselunga\nEuro 42.50\nAlimentari'
     }
-    
-    // Aggiorna la posizione ogni minuto, solo se non è in trascinamento
-    const interval = setInterval(() => {
-      if (!isDragging) {
-        setPosition(generateRandomPosition());
-      }
-    }, 60000); // 60000ms = 1 minuto
-    
-    return () => clearInterval(interval);
-  }, [isDragging]);
-
-  // Gestisce l'inizio del trascinamento
-  const handleDragStart = () => {
-    setIsDragging(true);
-  };
-
-  // Gestisce la fine del trascinamento
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    setIsDragging(false);
-    // Aggiorna la posizione finale dopo il trascinamento
-    setPosition({
-      x: position.x + info.offset.x,
-      y: position.y + info.offset.y
-    });
-
-    // Resetta i valori di trascinamento
-    dragX.set(0);
-    dragY.set(0);
   };
 
   return (
-    <>
-      <motion.div
-        className="fixed z-50 cursor-grab active:cursor-grabbing"
-        style={{
-          bottom: '50%',
-          right: '50%',
-          transform: 'translate(50%, 50%)'
-        }}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ 
-          scale: 1, 
-          opacity: 1,
-          x: position.x,
-          y: position.y,
-          transition: { 
-            type: 'spring', 
-            stiffness: 260, 
-            damping: 20,
-            duration: 1.5
-          }
-        }}
-        whileHover={{ 
-          scale: 1.1,
-          rotate: [0, -5, 5, -5, 0],
-          transition: { duration: 0.5 }
-        }}
-        whileTap={{ scale: 0.95 }}
-        drag
-        dragMomentum={false}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+    <div className="relative">
+      <Button
+        variant="outline"
+        className="rounded-full bg-white hover:bg-gray-100"
+        onClick={() => setIsOpen(!isOpen)}
       >
-        <button
-          onClick={() => setIsOpen(true)}
-          className="flex items-center justify-center gap-2 w-auto h-14 px-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-full shadow-lg shadow-emerald-200 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-emerald-300"
-          aria-label="Cash Talk"
-        >
-          <span className="flex items-center justify-center w-8 h-8 bg-white bg-opacity-20 rounded-full">
-            <Coins size={18} className="text-white" />
-          </span>
-          <span className="font-bold text-white">Cash Talk</span>
-          <span className="flex items-center justify-center w-8 h-8 bg-white bg-opacity-20 rounded-full">
-            <DollarSign size={18} className="text-white" />
-          </span>
-          
-          {/* Effetto pulsante con onda */}
-          <span className="absolute inset-0 rounded-full animate-pulse bg-white opacity-15"></span>
-        </button>
-      </motion.div>
-
-      <AnimatePresence>
-        {isOpen && <CashTalkDialog isOpen={isOpen} setIsOpen={setIsOpen} />}
-      </AnimatePresence>
-    </>
+        <MessageCircle className="w-4 h-4 mr-2" />
+        Cash Talk
+      </Button>
+      
+      {isOpen && (
+        <div className="absolute bottom-full mb-2 right-0 w-80">
+          <CashTalkDialog 
+            transaction={sampleTransaction}
+            isOpen={isOpen}
+            setIsOpen={setIsOpen}
+          />
+        </div>
+      )}
+    </div>
   );
-}
+};
+
+export default CashTalkButton;
