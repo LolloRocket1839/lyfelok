@@ -1,3 +1,4 @@
+
 import { Transaction, TransactionType } from './transactionRouter';
 
 interface Entity {
@@ -77,7 +78,6 @@ export class EnhancedNlpProcessor {
           'abbigliamento': ['vestiti', 'scarpe', 'giacca', 'pantaloni', 'camicia', 'maglia', 'jeans', 'cappotto']
         },
         categoriesVariations: {
-          // Variazioni per la categoria cibo
           "cibo": ["food", "groceries", "cibo", "alimentari", "supermercato", "spesa", "pranzo", "cena", "colazione", "pizza", "ristorante"],
           "trasporti": ["transport", "travel", "trasporti", "trasporto", "treno", "metro", "bus", "taxi", "uber", "carburante", "benzina", "gasolio", "autostrada", "pedaggio"],
           "casa": ["house", "home", "casa", "affitto", "mutuo", "bollette", "condominio", "arredamento", "manutenzione"],
