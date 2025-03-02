@@ -10,6 +10,7 @@ interface CashTalkDialogProps {
 }
 
 const CashTalkDialog: React.FC<CashTalkDialogProps> = ({ transaction, isOpen, setIsOpen }) => {
+  // Don't render if there's no transaction
   if (!transaction) return null;
   
   const isReceiptTransaction = transaction.metadata?.source === 'receipt_image';

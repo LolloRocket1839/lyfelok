@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Check } from 'lucide-react';
 import { mainCategories } from '@/utils/transactionStore';
 import { Transaction } from '@/utils/transactionRouter';
 import { supabase, userCategoryMappings, globalCategoryMappings } from '@/lib/supabase';
