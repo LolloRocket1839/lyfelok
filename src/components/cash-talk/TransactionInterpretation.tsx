@@ -18,8 +18,6 @@ export default function TransactionInterpretation({ transaction }: TransactionIn
         return <ShoppingBag className="text-red-500" size={24} />;
       case 'entrata':
         return <ArrowDown className="text-emerald-500" size={24} />;
-      case 'investimento':
-        return <TrendingUp className="text-blue-500" size={24} />;
       default:
         return <Tag size={24} />;
     }
